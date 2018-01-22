@@ -104,3 +104,14 @@ do {
 
 } while (stack[stackp] != EOF)
 ```
+
+# some useful equivalence classes:
+WHITESPACE:   		  \t|space
+LINE_BREAK:		  \n|\r
+
+DIGIT: 	      		  0-9
+HEX_DIGIT:		  a-fA-F0-9
+ALPHA_LCASE: 		  a-z
+ALPHA_UCAPS: 		  A-Z
+ALPHA: 			  a-zA-Z
+ALPHANUMERIC: 		  a-zA-Z0-9
