@@ -115,3 +115,47 @@ ALPHA_LCASE: 		  a-z
 ALPHA_UCAPS: 		  A-Z
 ALPHA: 			  a-zA-Z
 ALPHANUMERIC: 		  a-zA-Z0-9
+
+### implementation of equivalence classes:
+function with switch that returns an enumeration, and
+rewrite scan to switch on these enums.
+
+macros:
+
+case CLASS_DIGIT:
+  ...
+
+
+will expand co
+
+case '0':
+case '1':
+case '2':
+...
+case '9':
+  ...
+
+
+
+if "CLASS_DIGIT" is a macro:
+
+#define CLASS_DIGIT \
+'0'\
+case '1':\
+case '2':\
+case '3':\
+...
+case '9':\
+
+tis is a bit nasty, as the macro expands to a broken case clause, but
+in the source it would look nice.
+
+
+
+
+
+
+
+
+
+

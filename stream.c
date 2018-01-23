@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "stream.h"
+#include <string.h>
 
-stream *sopen(const char *filename) {
+stream *stream_fromfile(const char *filename) {
   stream *t = malloc(sizeof(stream));
   t->source = fopen(filename, "r");
   if (t->source == NULL) {
@@ -14,10 +15,20 @@ stream *sopen(const char *filename) {
   return t;
 }
 
+stream *stream_fromstr(const char* str) {
+  stream *t = malloc(sizeof(stream));
+  t->source = NULL;
+  strcpy(t->buffer, str);
+  t->fname = "<internal memory buffer>";
+  t->buffer[strlen(str)] = EOF;
+  t->nread = strlen(str) + 1; // one additional char for EOF
+  return t;
+}
+
 char sgetc(stream *s) {
-  if (s->bufferp >= BUFFER_SIZE) {
+  if (s->bufferp >= BUFFER_SIZE && s->source != NULL) {
     // we have read the buffer to the end.
-    // buffer the next part of the file:
+    // buffer the next part of the file (if it is a file):
     s->nread = fread(s->buffer, 1, BUFFER_SIZE, s->source);
     // and reset the buffer-position.
     s->bufferp = 0;
@@ -30,7 +41,8 @@ char sgetc(stream *s) {
     return s->buffer[(s->bufferp)++];
   else {
     // stack is empty, and there is nothing more to buffer.
-    fclose(s->source);
+    if (s->source != NULL)
+      fclose(s->source);
     return EOF;
   }
 }
@@ -45,6 +57,7 @@ void sputc(char c, stream *s) {
 }
 
 void sclose(stream *s) {
-  fclose(s->source);
+  if (s->source != NULL)
+    fclose(s->source);
   free(s);
 }
