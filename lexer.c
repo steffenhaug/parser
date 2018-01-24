@@ -6,20 +6,26 @@
 #include "lexer.h"
 
 /* INTERNAL STACK MANAGEMENT */
-#define push_next stack[++stackp] = sgetc(s);\
-  charnum++
+#define push_next stack[++stackp] = sgetc(s)
 /* pushes the next character in the stream to
    the internal stack, and increments the
    column counter.
 */
-#define pop_last sputc(stack[stackp], s);\
-  charnum--;
+
+#define pop_last sputc(stack[stackp], s)
 /* pops the last character from the internal stack,
    and pushes it back into the stream. Decrements
    the column counter.
 */
+
 #define return_lexeme(category) stack[stackp] = '\0';\
-    return lexeme_new(category, stack, linenum, lexeme_start)
+    return lexeme_new(category, stack, s->line, lexeme_start)
+/* NULL TERMINATES THE STRING ON THE INTERNAL STACK!
+   Then returns a pointer to a lexeme.
+*/
+
+#define return_lexeme_with_content(category,content) stack[stackp] = '\0';		\
+    return lexeme_new(category, content, s->line, lexeme_start)
 /* NULL TERMINATES THE STRING ON THE INTERNAL STACK!
    Then returns a pointer to a lexeme.
 */
@@ -52,23 +58,23 @@ lexeme *scan(stream *s) {
   // line and column
   int lexeme_start;
 
-  //
-  // THIS NEEDS TO GO. Stream should manage its own state ENTIRELY by itself!
-  //
-  static int linenum = 1;
-  static int charnum = 0;
+  /*                            */
+  /* BEGINNING OF STATE MACHINE */
+  /*                            */
 
  start:
+  // prepare the stack (zero stack-position, push a character)
   stackp = 0;
   stack[stackp] = sgetc(s);
-  charnum++;
-  lexeme_start = charnum;
+
+  // note the start-column of the current lexeme
+  lexeme_start = s->column;
+
+  // transition
   switch (stack[stackp]) {
   case LEXEME_WHITESPACE_NO_LINE_BREAK:
     goto start;
   case LEXEME_LINE_BREAK:
-    linenum++;
-    charnum = 0;
     goto start;
   case '0':
     goto seen_zero;
@@ -77,11 +83,22 @@ lexeme *scan(stream *s) {
   case '-':
     goto seen_minus;
   case EOF:
-    charnum--;
-    return lexeme_new(END_OF_FILE, "eof", linenum, lexeme_start);
+    return lexeme_new(END_OF_FILE, "eof", s->line, lexeme_start);
+  case '(':
+    return_lexeme_with_content(LPAREN, "(");
+  case ')':
+    return_lexeme_with_content(RPAREN, ")");
+  case '[':
+    return_lexeme_with_content(LSQBRACKET, "[");
+  case ']':
+    return_lexeme_with_content(LSQBRACKET, "]");
+  case '{':
+    return_lexeme_with_content(LCBRACE, "{");
+  case '}':
+    return_lexeme_with_content(LCBRACE, "}");
   default:
     fprintf(stderr, "lexer.c ERROR: Lexer error, unexpected symbol \"%c\". (line %d, column %d)\n",
-	    stack[stackp], linenum, charnum);
+	    stack[stackp], s->line, s->column);
     exit(1);
   }
 
@@ -141,7 +158,7 @@ lexeme *scan(stream *s) {
     pop_last;
     // if the lexeme ends with "e" or "E"
     fprintf(stderr, "lexer.c ERROR: Lexer error, no exponent after \"e\" in number. Found \"%c\". (line %d, column %d)\n",
-	    stack[stackp], linenum, charnum);
+	    stack[stackp], s->line, s->column);
     exit(1);
   }
 
@@ -164,7 +181,7 @@ lexeme *scan(stream *s) {
     pop_last;
     // if the lexeme ends with "x" or "X"
     fprintf(stderr, "lexer.c ERROR: Lexer error, no hex value after \"0x\". Found \"%c\". (line %d, column %d)\n",
-	    stack[stackp], linenum, charnum);
+	    stack[stackp], s->line, s->column);
     exit(1);
   }
 
@@ -187,7 +204,7 @@ lexeme *scan(stream *s) {
     pop_last;
     // if the lexeme ends with "b" or "B"
     fprintf(stderr, "lexer.c ERROR: Lexer error, no binary value after \"0b\". Found \"%c\". (line %d, column %d)\n",
-	    stack[stackp], linenum, charnum);
+	    stack[stackp], s->line, s->column);
     exit(1);
   }
 
@@ -210,11 +227,16 @@ lexeme *scan(stream *s) {
   case LEXEME_NONZERO_DIGIT:
     goto seen_digit;
   case '>':
-    return lexeme_new(RARROW, stack, linenum, lexeme_start);
+    return_lexeme_with_content(RARROW, "->");
   default:
     pop_last;
     fprintf(stderr, "lexer.c ERROR: parser error, unexpected %c (line %d, column %d)\n",
-	    stack[stackp], linenum, charnum);
+	    stack[stackp], s->line, s->column);
     exit(1);
   }
+
+  /*                      */
+  /* END OF STATE MACHINE */
+  /*                      */
+  
 }

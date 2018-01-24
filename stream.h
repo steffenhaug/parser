@@ -22,6 +22,10 @@ struct stream {
   size_t nread;
   int bufferp;
   int stackp;
+  // cursor to keep track of position
+  int line;
+  int column;
+  int break_line;
 };
 /* Stream structure.
 

@@ -21,18 +21,6 @@ void test_lex_file(const char* f) {
     }
     lexeme_delete(a);
   } while (1);
-  a = scan(s);
-  printf("lexeme {category: %3d, content: %10s, line %2d, column %2d}\n",
-	 a->category, a->content, a->line, a->column);
-  lexeme_delete(a);
-  a = scan(s);
-  printf("lexeme {category: %3d, content: %10s, line %2d, column %2d}\n",
-	 a->category, a->content, a->line, a->column);
-  lexeme_delete(a);
-  a = scan(s);
-  printf("lexeme {category: %3d, content: %10s, line %2d, column %2d}\n",
-	 a->category, a->content, a->line, a->column);
-  lexeme_delete(a);
   sclose(s);
 }
 
@@ -52,24 +40,13 @@ void test_lex_str(const char* str) {
     }
     lexeme_delete(a);
   } while (1);
-
-  a = scan(s);
-  printf("lexeme {category: %3d, content: %10s, line %2d, column %2d}\n",
-	 a->category, a->content, a->line, a->column);
-  lexeme_delete(a);
-  a = scan(s);
-  printf("lexeme {category: %3d, content: %10s, line %2d, column %2d}\n",
-	 a->category, a->content, a->line, a->column);
-  lexeme_delete(a);
-  a = scan(s);
-  printf("lexeme {category: %3d, content: %10s, line %2d, column %2d}\n",
-	 a->category, a->content, a->line, a->column);
-  lexeme_delete(a);
   sclose(s);
 }
 
 int main(int arc, const char *argv[]) {
-  //test_lex_file(argv[1]);
-  test_lex_str("12.5e32");
+  printf("lexed file\n");
+  test_lex_file(argv[1]);
+  printf("lexed string\n");
+  test_lex_str("(->) [] {} 12.5e32 123\n 0x543FA");
   return 0;
 }
