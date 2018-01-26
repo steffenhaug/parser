@@ -1,23 +1,98 @@
+Parsing
+-------
+
+Leaning towards recursive descent.
+
+## Grammar (ish)
+```
+prog	-> topl '.'
+	 | topl '.' prog
+
+topl	-> 'let' identifier '=' expr '.'
+	 | 'func' identifier list ':' expr '.'
+	 | 'use' '<' identifier '>' '.'
+	 | 'use' string '.'
+	 | expr '.'
+
+eq	-> eq '='  expr
+	 | eq '!=' expr
+	 | eq '<'  expr
+	 | eq '>'  expr
+	 | eq '<=' expr
+	 | eq '>=' expr
+	 | expr
+
+expr	-> expr + term
+      	 | expr - term
+      	 | term
+
+term	-> term * factor
+         | term / factor
+	 | term 'mod' factor
+         | factor
+
+factor 	-> factor ** power
+	 | power
+
+power	-> identifier
+	 | identifier '(' ')'
+	 | identifier '(' list ')'
+	 | int
+	 | float
+	 | hex_int
+	 | bin_int
+	 | string
+	 | '(' expr ')'
+	 | '-' power
+
+list	-> expr
+	 | expr ',' list
+
+
+```
+
+So, for example:
+```
+"x + y * z"	-> (+ x (* y z))
+"(x + y)* z" 	-> (* z (+ x y))
+
+-- function application needs prescedence over all math operations
+"f(x, y)**2" 	-> (** (f x y) 2)
+
+
+fun fac n:
+  
+
+
+
+```
+
+
+
+
 Finite State Machines
 ---------------------
 
 FSMs will probably be used for lexing.
 
 DFSM:
+```
 Sigma	input alphabet
 S	finite set of states
 s0	start state
 delta	transition function Sigma x S -> S
 E	set of exit states
+```
 
 Finite state transducer:
+```
 Sigma	input alphabet
 Gamma	output alphabet
 S	finite set of states
 s0	start state
 delta	transition function. Sigma x S -> S
 omega	output function. Sigma x S -> Gamma
-
+```
 
 the lexer will probably be more like a DFSM,
 with a STACK to put the currently lexed string on.
@@ -25,6 +100,7 @@ the mexhine will output lexeme structs, but not on every
 transition, so a FST is not necesarily the optimal
 structure.
 
+```
 Sigma	  set of all valid characters in source file (in practice unicode)
 	  NOTE: Sigma may be a morphism on input characters, categorizing
 	  them in equivalence classes.
@@ -62,7 +138,7 @@ delta 	  switch on current character. in the case of numbers:
 
 e	  the EXIT state will probably just push back the last character,
 	  reset the stack, and build the lexeme.
-
+```
 
 ### the big question
 how to structure the automata efficiently?
@@ -149,13 +225,3 @@ case '9':\
 
 tis is a bit nasty, as the macro expands to a broken case clause, but
 in the source it would look nice.
-
-
-
-
-
-
-
-
-
-

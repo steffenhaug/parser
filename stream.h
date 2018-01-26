@@ -11,7 +11,11 @@
    first, before any characters are read from the buffer.
 */
 #pragma once
-#define BUFFER_SIZE 512
+
+#include <string.h>
+#include <stdio.h>
+
+#define BUFFER_SIZE 4096
 #define STACK_SIZE 32
 
 struct stream {
