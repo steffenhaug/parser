@@ -3,5 +3,5 @@ all:
 
 .PHONY: test
 test:
-	clang -o test/test lexer.c stream.c test/tmain.c
+	clang -g -O0 -o test/test lexer.c stream.c test/tmain.c
 	cd test && ./test

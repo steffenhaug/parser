@@ -12,9 +12,6 @@
 */
 #pragma once
 
-#include <string.h>
-#include <stdio.h>
-
 #define BUFFER_SIZE 4096
 #define STACK_SIZE 32
 

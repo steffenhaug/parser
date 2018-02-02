@@ -21,8 +21,8 @@ use module/from_module.
 
 -- symbol definitions
 
-let pi = 3.1415.
-let x = pi * 5.
+def pi = 3.1415.
+def x = pi * 5.
 
 -- functions
 

@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "stream.h"
 #include <string.h>
+
+#include "stream.h"
 
 stream *stream_fromfile(const char *filename) {
   stream *t = malloc(sizeof(stream));
@@ -61,9 +62,11 @@ char sgetc(stream *s) {
   if (s->stackp > 0)
     // there are characters on the stack.
     return s->stack[--(s->stackp)];
-  if (s->bufferp < s->nread)
+  if (s->bufferp < s->nread) {
     // there ARE characters left in the buffer.
     r =  s->buffer[(s->bufferp)++];
+    s->column++;
+  }
   else if (s->source != NULL) {
     // there ARE NO characters left in the buffer.
     fclose(s->source);
@@ -72,7 +75,7 @@ char sgetc(stream *s) {
   // line/column "cursor" management
   if (s->break_line) {
     // the previous character was '\n'
-    s->column = 0;
+    s->column = 1;
     s->line++;
   }
 
@@ -82,7 +85,6 @@ char sgetc(stream *s) {
   else
     s->break_line = 0;
 
-  s->column++;
   return r;
 }
 

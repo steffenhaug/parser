@@ -48,7 +48,7 @@ https://mort.coffee/home/obscure-c-features/
   } while (0);
 
 
-#define test(description,...)						\
+#define unit(description,...)						\
   do {									\
     __label__ failure;							\
     __label__ success;							\
@@ -58,35 +58,31 @@ https://mort.coffee/home/obscure-c-features/
     goto success;							\
   failure:								\
     failed++;								\
-    printf("%8s %-.40s"":\n",						\
-	   RED "Failure:" RESET,					\
-	   description);						\
-    printf("    %s",							\
-	   message);							\
-    printf("    In file: %s. Suite: %s\n",				\
-	   __FILE__, suite_name);					\
+    printf("%8s %-.40s"":\n", RED "Failure:" RESET, description);	\
+    printf("    %s", message);						\
+    printf("    In file: %s. Suite: %s\n", __FILE__, suite_name);	\
     goto test_end;							\
   success:								\
-    printf("%8s %-40.40s %s, %s\n",					\
+    printf("%8s %-40.40s %s: %s\n",					\
 	   GRN "Success:" RESET,					\
-	   description, __FILE__, suite_name);	\
+	   description, __FILE__, suite_name);				\
   test_end:								\
     total++;								\
   } while (0);
 
 
 #define suite(name,...)							\
-  void test_name() {							\
+  void test_##name() {							\
     const char* suite_name = #name;					\
     int failed = 0;							\
     int total = 0;							\
     printf("\nTesting " YLW "%s" RESET ":\n",				\
 	   suite_name);							\
     __VA_ARGS__;							\
-    printf(YLW "%s:" RESET " Passed %s%d/%d" RESET " tests.\n",	\
+    printf(YLW "\n%s:" RESET " Passed %s%d/%d" RESET " tests.\n",	\
 	   suite_name,							\
 	   (failed == 0)? GRN : RED,					\
 	   total - failed, total);					\
   }
 
-#define run_suite(name) test_name()
+#define test(name) test_##name()
