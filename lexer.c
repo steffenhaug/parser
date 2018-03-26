@@ -5,36 +5,95 @@
 #include "stream.h"
 #include "lexer.h"
 
-/* INTERNAL STACK MANAGEMENT */
-#define push_next stack[++stackp] = sgetc(s)
-/* pushes the next character in the stream to
-   the internal stack, and increments the
-   column counter.
-*/
+/* Internal Stack Management
+ * =========================
+ * These macros manage the internal stack ("munched") in 
+ * the state machine.
+ */
 
-#define pop_last sputc(stack[stackp], s)
-/* pops the last character from the internal stack,
-   and pushes it back into the stream. Decrements
-   the column counter.
-*/
+#define munch munched[++stackp] = sgetc(input)
+/* Pull a new character from the input stream,
+ * and push it to the stack.
+ */
 
-#define return_lexeme(category) stack[stackp] = '\0';\
-    return lexeme_new(category, stack, s->line, lexeme_start)
-/* NULL TERMINATES THE STRING ON THE INTERNAL STACK!
-   Then returns a pointer to a lexeme.
-*/
+#define spit sputc(munched[stackp--], input)
+/* Pop a character from the stack, and push it
+ * back into the input stream.
+ */
 
-#define return_lexeme_with_content(category,content) stack[stackp] = '\0';		\
-    return lexeme_new(category, content, s->line, lexeme_start)
-/* NULL TERMINATES THE STRING ON THE INTERNAL STACK!
-   Then returns a pointer to a lexeme.
-*/
+#define drop stackp--
+/* Drop the character on the top of the stack.
+ */
 
-lexeme *lexeme_new(int category, const char *content, int l, int c) {
+#define push(element) munched[++stackp] = element
+/* Push an element, not necessarily from the input
+ * stream, to the stack.
+ */
+
+#define reset_munch				\
+  stackp = 0;					\
+  munched[stackp] = sgetc(input);			\
+  munch_start = input->column;
+/* Executed when the state machine enters the
+ * start-state. Prepares the stack for scanning
+ * a new lexeme.
+ */
+
+#define last_munched munched[stackp]
+/* Peeks the stack to get the most recently munched
+ * character.
+ */
+  
+
+/* Yielding Macros (returns lexemes)
+ * =================================
+ * Returning lexemes are abstracted away, because it is
+ * relatively error-prone:
+ * 
+ *  - It is necessary to null-terminate the stack 
+ *    that stores the characters munched since the
+ *    beginning of the current lexeme, because the
+ *    stack is strcpy()-ed into the returned struct.
+ *
+ *  - It is verbose, because a lot of information is
+ *    needed to create the lexeme structure. Verbose
+ *    code is error-prone because it makes you skim
+ *    through it.
+ * 
+ * "yield"-ing is appropriate nomenclature, because the
+ * stream's state persists across calls to scan(), similar
+ * to iterators in languages like Python, where the notion
+ * of "yielding" means the same thing.
+ *
+ */
+
+#define yield(category)						\
+  munched[stackp + 1] = '\0';					\
+  return lexeme(category, munched, input->line, munch_start)
+
+#define yield_eof						\
+  munched[stackp + 1] = '\0';					\
+  return lexeme(EndOfFile, "eof", input->line, munch_start)
+
+/* Lexer Error 
+ * ===========
+ */
+#define lexer_error(message, ...)			     \
+  fprintf(stderr,					     \
+	  "Lexer Error: " message " (line %d, column %d)\n", \
+	  __VA_ARGS__, input->line, input->column);		     \
+  exit(1)
+
+// This can be called through the macro lexeme() as
+//   lexeme *l = lexeme(category, content, line, column);
+//               ---------------------------------------
+// which generalizes notation for initializing structures,
+// as you don't always need a function to set it up.
+lexeme *lexeme_new(lexeme_class type, const char *content, int line, int column) {
   lexeme *t = malloc(sizeof(lexeme));
-  t->category = category;
-  t->line = l;
-  t->column = c;
+  t->type = type;
+  t->line = line;
+  t->column = column;
     
   int conlen = strlen(content) + 1;
   t->content = (char *) malloc(conlen);
@@ -42,69 +101,213 @@ lexeme *lexeme_new(int category, const char *content, int l, int c) {
   return t;
 }
 
-void lexeme_delete(lexeme *l) {
+void free_lexeme(lexeme *l) {
   if (l->content != NULL)
     free(l->content);
   if (l != NULL)
     free(l);
 }
 
-// get the next lexeme
-lexeme *scan(stream *s) {
-  // stack to construct 
-  char stack[LEXEME_STACK_DEPTH];
-  int stackp;
-  
-  // line and column
-  int lexeme_start;
+#define check(str, id) if (strcmp(contents, str) == 0) return id
+lexeme_class id_or_keyword(const char *contents) {
+  check("mod", Mod);
+  check("div", Div);
+  check("func", Func);
+  check("fn", Fn);
+  check("use", Use);
+  check("def", Def);
+  check("let", Let);
+  check("in", In);
+  check("if", If);
+  check("else", Else);
+  check("switch", Switch);
+  check("default", Default);
+  check("cases", Cases);
+  check("otherwise", Otherwise);
+  return Identifier;
+}
+#undef check
 
-  /*                            */
+lexeme *scan(stream *input) {
+  // Character stack
+  // ===============
+  char munched[LEXEME_STACK_DEPTH];
+  int stackp;
+  int munch_start;
+  /* munched:
+   *   A stack containing the characters that have
+   *   been read from the stream since the last time
+   *   it entered the start-state.
+   *
+   * stackp:
+   *   The index of the top of the stack.
+   * 
+   * munch_start:
+   *   A record of the column (in the input stream)
+   *   the current lexeme started. It is not necessary
+   *   to record the start line, because a lexeme can
+   *   not span multiple lines.
+   */
+
+  /* -------------------------- */
   /* BEGINNING OF STATE MACHINE */
-  /*                            */
+  /* -------------------------- */
 
  start:
-  // prepare the stack (zero stack-position, push a character)
-  stackp = 0;
-  stack[stackp] = sgetc(s);
-
-  // note the start-column of the current lexeme
-  lexeme_start = s->column;
-
-  // transition
-  switch (stack[stackp]) {
-  case LEXEME_WHITESPACE_NO_LINE_BREAK:
-    goto start;
-  case LEXEME_LINE_BREAK:
+  reset_munch;
+  switch (last_munched) {
+  case WHITESPACE:
     goto start;
   case '0':
     goto seen_zero;
-  case LEXEME_NONZERO_DIGIT:
+  case NONZERO_DIGIT:
     goto seen_digit;
+  case '\"':
+    reset_munch; // get rid of the quote we just ate
+    goto scan_string;
+  case ALPHA: // (a-z,A-Z,_) are the only valid start of identifiers
+  case '_':
+    goto scan_identifier;
+  case EOF:
+    yield_eof;
+  case '(':
+    yield(LeftParenthesis);
+  case ')':
+    yield(RightParenthesis);
+  case '[':
+    yield(LeftSquareBracket);
+  case ']':
+    yield(RightSquareBracket);
+  case '{':
+    yield(LeftCurlyBrace);
+  case '}':
+    yield(RightCurlyBrace);
+  case '<':
+    goto seen_less_than;
+  case '>':
+    goto seen_greater_than;
+  case '!':
+    goto seen_bang;
+  case '=':
+    goto seen_equals;
+  case '.':
+    goto seen_dot;
+  case ':':
+    yield(Colon);
+  case ',':
+    yield(Comma);
+  case ';':
+    yield(Semicolon);
+  case '^':
+    yield(Caret);
+  case '+':
+    yield(Plus);
   case '-':
     goto seen_minus;
-  case EOF:
-    return lexeme_new(END_OF_FILE, "eof", s->line, lexeme_start);
-  case '(':
-    return_lexeme_with_content(LPAREN, "(");
-  case ')':
-    return_lexeme_with_content(RPAREN, ")");
-  case '[':
-    return_lexeme_with_content(LSQBRACKET, "[");
-  case ']':
-    return_lexeme_with_content(LSQBRACKET, "]");
-  case '{':
-    return_lexeme_with_content(LCBRACE, "{");
-  case '}':
-    return_lexeme_with_content(LCBRACE, "}");
+  case '*':
+    yield(Asterisk);
+  case '/':
+    goto seen_slash;
   default:
-    fprintf(stderr, "lexer.c ERROR: Lexer error, unexpected symbol \"%c\". (line %d, column %d)\n",
-	    stack[stackp], s->line, s->column);
-    exit(1);
+    lexer_error("Unexpected symbol \"%c\".", last_munched);
   }
 
+ seen_dot:
+  munch;
+  switch (last_munched) {
+  case '.':
+    goto seen_two_dots;
+  default:
+    spit;
+    yield(Dot);
+  }
+
+ seen_two_dots:
+  munch;
+  switch (last_munched) {
+  case '.':
+    yield(Ellipsis);
+  default:
+    lexer_error("Unexpected symbol \"%c\".", last_munched);
+  }
+
+ seen_minus:
+  munch;
+  switch (last_munched) {
+  case NONZERO_DIGIT:
+    goto seen_digit;
+  case '>':
+    yield(RightArrow);
+  default:
+    spit;
+    yield(Minus);
+  }
+
+ seen_slash:
+  munch;
+  switch (last_munched) {
+  case '/':
+    goto skip_comment;
+  default:
+    spit;
+    yield(Slash);
+  }
+
+ skip_comment:
+  munch;
+  switch (last_munched) {
+  case LINE_BREAK:
+    goto start;
+  default:
+    goto skip_comment;
+  }
+
+ seen_less_than:
+  munch;
+  switch (last_munched) {
+  case '=':
+    yield(LessOrEq);
+  case '-':
+    yield(LeftArrow);
+  default:
+    spit;
+    yield(LessThan);
+  }
+  
+ seen_greater_than:
+  munch;
+  switch (last_munched) {
+  case '=':
+    yield(GreaterOrEq);
+  default:
+    spit;
+    yield(GreaterThan);
+  }
+
+ seen_bang:
+  munch;
+  switch (last_munched) {
+  case '=':
+    yield(NotEqual);
+  default:
+    lexer_error("Expected \"=\" after \"!\". Found \"%c\".", last_munched);
+  }
+
+ seen_equals:
+  munch;
+  switch (last_munched) {
+  case '=':
+    yield(DoubleEquals);
+  default:
+    spit;
+    yield(Equals);
+  }
+
+  // Lexing Numbers
+  // ==============
  seen_zero:
-  push_next;
-  switch (stack[stackp]) {
+  munch;
+  switch (last_munched) {
   case '.':
     goto seen_decimal_point;
   case 'x':
@@ -113,18 +316,15 @@ lexeme *scan(stream *s) {
   case 'b':
   case 'B':
     goto seen_bin;
-  case 'e':
-  case 'E':
-    goto scan_exp;
   default:
-    pop_last;
-    return_lexeme(INTEGER);
+    spit;
+    yield(DecInteger);
   }
 
  seen_digit:
-  push_next;
-  switch (stack[stackp]) {
-  case LEXEME_DIGIT:
+  munch;
+  switch (last_munched) {
+  case DIGIT:
     goto seen_digit;
   case '.':
     goto seen_decimal_point;
@@ -132,111 +332,236 @@ lexeme *scan(stream *s) {
   case 'E':
     goto seen_exp;
   default:
-    pop_last;
-    return_lexeme(INTEGER);
+    spit;
+    yield(DecInteger);
   }
-
+  
  seen_decimal_point:
-  push_next;
-  switch (stack[stackp]) {
-  case LEXEME_DIGIT:
-    goto seen_decimal_point;
+  munch;
+  switch (last_munched) {
+  case DIGIT:
+    goto scan_frac;
+  default:
+    spit;
+    spit;
+    yield(DecInteger);
+  }
+  
+ scan_frac:
+  munch;
+  switch (last_munched) {
+  case DIGIT:
+    goto scan_frac;
   case 'e':
   case 'E':
     goto seen_exp;
   default:
-    pop_last;
-    return_lexeme(FLOAT);
+    spit;
+    yield(Float);
   }
-
+    
  seen_exp:
-  push_next;
-  switch (stack[stackp]) {
-  case LEXEME_NONZERO_DIGIT:
+  munch;
+  switch (last_munched) {
+  case DIGIT:
     goto scan_exp;
+  case '-':
+    // Verify that the character after the minus is a digit
+    munch;
+    switch (last_munched) {
+    case DIGIT:
+      goto scan_exp;
+    default:
+      lexer_error("No digit after \"-\" in exponent! Found \"%c\".", last_munched);
+    }
   default:
-    pop_last;
-    // if the lexeme ends with "e" or "E"
-    fprintf(stderr, "lexer.c ERROR: Lexer error, no exponent after \"e\" in number. Found \"%c\". (line %d, column %d)\n",
-	    stack[stackp], s->line, s->column);
-    exit(1);
+    lexer_error("No exponent after \"e\". Found \"%c\".", last_munched);
   }
 
  scan_exp:
-  push_next;
-  switch (stack[stackp]) {
-  case LEXEME_DIGIT:
+  munch;
+  switch (last_munched) {
+  case DIGIT:
     goto scan_exp;
+  case '.':
+    goto seen_exp_decimal_point;
   default:
-    pop_last;
-    return_lexeme(FLOAT);
+    spit;
+    yield(Float);
+  }
+
+ seen_exp_decimal_point:
+  munch;
+  switch (last_munched) {
+  case DIGIT:
+    goto scan_exp_frac;
+  default:
+    spit;
+    spit;
+    yield(Float);
+  }
+
+ scan_exp_frac:
+  munch;
+  switch (last_munched) {
+  case DIGIT:
+    goto scan_exp_frac;
+  default:
+    spit;
+    yield(Float);
   }
 
  seen_hex:
-  push_next;
-  switch (stack[stackp]) {
-  case LEXEME_HEX_DIGIT:
+  munch;
+  switch (last_munched) {
+  case HEX_DIGIT:
     goto scan_hex;
   default:
-    pop_last;
-    // if the lexeme ends with "x" or "X"
-    fprintf(stderr, "lexer.c ERROR: Lexer error, no hex value after \"0x\". Found \"%c\". (line %d, column %d)\n",
-	    stack[stackp], s->line, s->column);
-    exit(1);
+    lexer_error("No hex value after \"0x\". Found \"%c\".", last_munched);
   }
 
  scan_hex:
-  push_next;
-  switch (stack[stackp]) {
-  case LEXEME_HEX_DIGIT:
+  munch;
+  switch (last_munched) {
+  case HEX_DIGIT:
     goto scan_hex;
   default:
-    pop_last;
-    return_lexeme(HEX_INTEGER);
+    spit;
+    yield(HexInteger);
   }
 
  seen_bin:
-  push_next;
-  switch (stack[stackp]) {
-  case LEXEME_HEX_DIGIT:
-    goto scan_bin;
-  default:
-    pop_last;
-    // if the lexeme ends with "b" or "B"
-    fprintf(stderr, "lexer.c ERROR: Lexer error, no binary value after \"0b\". Found \"%c\". (line %d, column %d)\n",
-	    stack[stackp], s->line, s->column);
-    exit(1);
-  }
-
- scan_bin:
-  push_next;
-  switch (stack[stackp]) {
-  case '0': // we *reaaaally* need equivalence classes :-)
+  munch;
+  switch (last_munched) {
+  case '0':
   case '1':
     goto scan_bin;
   default:
-    pop_last;
-    return_lexeme(BIN_INTEGER);
+    lexer_error("No binary value after \"0b\". Found \"%c\".", last_munched);
   }
 
- seen_minus:
-  push_next;
-  switch (stack[stackp]) {
+ scan_bin:
+  munch;
+  switch (last_munched) {
   case '0':
-    goto seen_zero;
-  case LEXEME_NONZERO_DIGIT:
-    goto seen_digit;
-  case '>':
-    return_lexeme_with_content(RARROW, "->");
+  case '1':
+    goto scan_bin;
   default:
-    pop_last;
-    fprintf(stderr, "lexer.c ERROR: parser error, unexpected %c (line %d, column %d)\n",
-	    stack[stackp], s->line, s->column);
-    exit(1);
+    spit;
+    yield(BinInteger);
   }
 
-  /*                      */
-  /* END OF STATE MACHINE */
-  /*                      */
+
+  // Lexing Strings
+  // ==============
+ scan_string:
+  munch;
+  switch (last_munched) {
+  case '\"':
+    // Literal Quote; end of string.
+    drop;
+    yield(String);
+  case '\\':
+    // Literal Slash; escape a character.
+    goto scan_escaped_character;
+  default:
+    goto scan_string;
+  }
+
+ scan_escaped_character:
+  munch;
+  switch (last_munched) {
+  case 'n':
+    drop; // drop the esape code
+    drop; // drop the slash
+    push('\n'); // push a literal newline
+    goto scan_string;
+  case 't':
+    drop;
+    drop;
+    push('\t'); // push a literal tab
+    goto scan_string;
+  default:
+    lexer_error("Unrecognized escape character \"%c\".", last_munched);
+  }
+
+
+  // Lexing Identifiers
+  // ==================
+ scan_identifier:
+  munch;
+  switch (last_munched) {
+  case ALPHANUMERIC:
+  case '_':
+    // Alphanumberic characters (a-z,A-Z,0-9) and _ can follow
+    // the first character in an identifier.
+    goto scan_identifier;
+  case '?':
+    // A question mark is legal on the end, so don't spit
+    // it out! It is only legal as the last character, however,
+    // so we stop searching here.
+    yield(id_or_keyword(munched));
+  default:
+    spit;
+    yield(id_or_keyword(munched));
+  }
   
+  /* -------------------- */
+  /* END OF STATE MACHINE */
+  /* -------------------- */
 }
+
+#define check(id) case id: return #id
+const char* lexeme_class_tostr(lexeme_class c) {
+  switch (c) {
+  check(DecInteger);
+  check(HexInteger);
+  check(BinInteger);
+  check(Float);
+  check(String);
+  check(Identifier);
+  check(LeftParenthesis);
+  check(RightParenthesis);
+  check(LeftCurlyBrace);
+  check(RightCurlyBrace);
+  check(LeftSquareBracket);
+  check(RightSquareBracket);
+  check(LeftArrow);
+  check(RightArrow);
+  check(Plus);
+  check(Minus);
+  check(Asterisk);
+  check(Slash);
+  check(Mod);
+  check(Div);
+  check(EndOfFile);
+  check(Dot);
+  check(Comma);
+  check(Colon);
+  check(Semicolon);
+  check(Ellipsis);
+  check(LessThan);
+  check(GreaterThan);
+  check(LessOrEq);
+  check(GreaterOrEq);
+  check(Equals);
+  check(DoubleEquals);
+  check(NotEqual);
+  check(Func);
+  check(Fn);
+  check(Use);
+  check(Def);
+  check(Let);
+  check(In);
+  check(If);
+  check(Else);
+  check(Switch);
+  check(Default);
+  check(Cases);
+  check(Otherwise);
+  check(Caret);
+  default:
+    return "<tostr() not implemented for this lexeme class>";
+  }
+}
+#undef check

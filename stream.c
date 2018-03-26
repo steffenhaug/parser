@@ -19,6 +19,8 @@ stream *stream_fromfile(const char *filename) {
   t->nread = fread(t->buffer, 1, BUFFER_SIZE, t->source);
   t->bufferp = 0;
 
+  t->stackp = 0;
+
   // line/column "cursor"
   t->line = 1;
   t->column = 0;
@@ -41,11 +43,14 @@ stream *stream_fromstr(const char* str) {
   
   // place EOF at the end of string, so the stream terminates
   t->buffer[strlen(str)] = EOF;
+
+  t->stackp = 0;
   
   // line/column "cursor"
   t->line = 1;
   t->column = 0;
   t->break_line = 0;
+
   return t;
 }
 
