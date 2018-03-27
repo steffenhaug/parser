@@ -32,7 +32,7 @@
 
 #define reset_munch				\
   stackp = 0;					\
-  munched[stackp] = sgetc(input);			\
+  munched[stackp] = sgetc(input);		\
   munch_start = input->column;
 /* Executed when the state machine enters the
  * start-state. Prepares the stack for scanning
@@ -72,7 +72,6 @@
   return lexeme(category, munched, input->line, munch_start)
 
 #define yield_eof						\
-  munched[stackp + 1] = '\0';					\
   return lexeme(EndOfFile, "eof", input->line, munch_start)
 
 /* Lexer Error 
@@ -508,8 +507,6 @@ lexeme *scan(stream *input) {
     // Alphanumberic characters (a-z,A-Z,0-9) and _ can follow
     // the first character in an identifier.
     goto scan_identifier;
-  case EOF:
-    lexer_error("Unexpected EOF while lexing identifier!");
   case '?':
     // A question mark is legal on the end, so don't spit
     // it out! It is only legal as the last character, however,
