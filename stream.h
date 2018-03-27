@@ -13,7 +13,7 @@
 #pragma once
 
 #define BUFFER_SIZE 4096
-#define STACK_SIZE 32
+#define STACK_SIZE 16
 
 struct stream {
   FILE *source;

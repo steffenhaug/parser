@@ -1,0 +1,24 @@
+// Sample Program
+// ==============
+// Subject to change -- obviously.
+
+// Include a library
+use <linalg>.
+
+// Matrices should be first-class, like matlab
+def A = [ 1, 0, 0 ;
+          0, 1, 0 ;
+	  0, 0, 1 ]
+
+func quicksort(L):
+  cond:
+    empty?(L) or singleton?(L) then L,
+  otherwise:
+    let v, vs  = uncons(L),
+        lower  = filter(fn x: x < v,  vs),
+	higher = filter(fn x: x >= v, vs),
+    in:
+      sort(lower) + [v] + sort(higher).
+
+
+func square(n): n^2.

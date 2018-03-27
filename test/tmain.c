@@ -114,6 +114,12 @@ suite(stream, {
 
 })
 
+
+#define verify(str, kw)					\
+    l = scan(s);					\
+    assert(l->type == kw);				\
+    assert(strcmp(l->content, str) == 0)
+
 suite(lexer, {
     unit("create and delete lexeme", {
 	lexeme *l = lexeme_new(EndOfFile, "eof", 1, 1);
@@ -365,12 +371,12 @@ suite(lexer, {
 
     unit("lex segment with comment", {
 	stream *s = stream_fromstr("->"
-				   "// foobar loodar \n"
-				   "// comments should be invisible \n"
-				   "// past the lexer \n"
-				   "// thus, the lexer should only \n"
+				   "// foobar loodar. \n"
+				   "// Comments should be invisible \n"
+				   "// past the lexing stage, \n"
+				   "// thus the lexer should only \n"
 				   "// emit two RightArrows (->) for \n"
-				   "// this segment \n"
+				   "// this segment of text \n"
 				   "->");
 	lexeme *l;
 
@@ -387,13 +393,8 @@ suite(lexer, {
 	stream *s = stream_fromstr(" \"foobar\" \"loodar\" ");
 	lexeme *l;
 
-	l = scan(s);
-	assert(l->type == String);
-	assert(strcmp(l->content, "foobar") == 0);
-
-	l = scan(s);
-	assert(l->type == String);
-	assert(strcmp(l->content, "loodar") == 0);
+	verify("foobar", String);
+	verify("loodar", String);
 	
 	free_lexeme(l);
 	sclose(s);
@@ -403,23 +404,46 @@ suite(lexer, {
 	stream *s = stream_fromstr("foobar foo123 loodar?");
 	lexeme *l;
 
-	l = scan(s);
-	assert(l->type == Identifier);
-	assert(strcmp(l->content, "foobar") == 0);
+	verify("foobar", Identifier);
+	verify("foo123", Identifier);
+	verify("loodar?", Identifier);
 
-	l = scan(s);
-	assert(l->type == Identifier);
-	assert(strcmp(l->content, "foo123") == 0);
+	free_lexeme(l);
+	sclose(s);
+    });
 
-	l = scan(s);
-	assert(l->type == Identifier);
-	assert(strcmp(l->content, "loodar?") == 0);
+    unit("lex keywords", {
+	stream *s = stream_fromstr("mod div func fn use as "
+				   "let in if else switch default "
+				   "cases otherwise and or xor true false ");
+	lexeme *l;
+
+	verify("mod", Mod);
+	verify("div", Div);
+	verify("func", Func);
+	verify("fn", Fn);
+	verify("use", Use);
+	verify("as", As);
+	verify("let", Let);
+	verify("in", In);
+	verify("if", If);
+	verify("else", Else);
+	verify("switch", Switch);
+	verify("default", Default);
+	verify("cases", Cases);
+	verify("otherwise", Otherwise);
+	verify("and", And);
+	verify("or", Or);
+	verify("xor", Xor);
+	verify("true", True);
+	verify("false", False);
 
 	free_lexeme(l);
 	sclose(s);
     });
 
 })
+#undef verify
 
 int main() {
   test(stream);
