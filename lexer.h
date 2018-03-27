@@ -1,10 +1,34 @@
+/* Lexer.h
+ * =======
+ * The lexer is,  in principle,  capable of arbitrary
+ * lookahead, if you replace that stack - which is of
+ * fixed size - with a dynamically allocated array.
+ *   This is  assuming  it is  possible to  push back
+ * arbitrarily  many characters  to the input source,
+ * which can easily be  achieved with another dynamic
+ * array.
+ *   Lexing Lie does not require arbitrary lookahead,
+ * which is why  I  opted for a rather shallow stack.
+ * 
+ * Much of  the heavy lifting  is  accomplished using
+ * macros, for practical reasons.  The internal state
+ * machine also  uses  goto,  because  state machines
+ * based  on  arrays of function pointers,  and other
+ * classic tricks are (very) cumbersome.
+ *   The  resulting  state machine  is  very straight 
+ * forward,  as long as you know how the macros work,
+ * and they are quite simple.
+ */
+
 #pragma once
 #include "stream.h"
 
-#define LEXEME_STACK_DEPTH 256
+// THe maximum stack depth is  also the max length of
+// strings, identifiers and so on.
+#define LEXEME_STACK_DEPTH 512
 
-/* EQUIVALENCE CLASSES
- * ===================
+/* Equivalence Classes
+ * -------------------
  * These are _ONLY_ supposed to be used within the state
  * machine. They look very weird, but remember that they
  * expand in the context
@@ -197,12 +221,13 @@ typedef enum {
   Slash,        // /
   Caret,        // ^
   // Reserved Keywords
-  Div,
-  Mod,
+  Div, Mod,
+  And, Or, Xor,
+  True, False,
   Func,
   Fn,
   Use,
-  Def,
+  As,
   Let,
   In,
   If,

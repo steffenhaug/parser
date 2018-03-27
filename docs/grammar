@@ -1,0 +1,112 @@
+// Grammar
+// =======
+// This parser is hand written, and the grammar
+// only  exists to hold  my hand as i write it.
+// Since the  parser is not generated  from the
+// grammar,  there is no  guarantee  that it is
+// 100% correct, or even complete.
+
+input
+    : statement*
+    ;
+
+statement
+    : 'use' '<' LIBRARY '>' ('as' ID) '.'
+    | 'use' PATH ('as' ID) '.'
+    | let
+    | funcdef
+    | expression '.'
+    ;
+
+symblist
+    : ID (',' ID)*
+    ;
+
+exprlist
+    : expression (',' expression)*
+    ;
+
+symbdef
+    : 'def' symblist '=' expression '.'
+    ;
+
+funcdef
+    : 'func' ID '(' [symblist] ')' ':' expression '.'
+    ;
+
+ifelse
+    : 'if' expression ':' expression 'else' ':' expression
+    ;
+
+compound_expression
+    : !!!
+    ;
+
+// Prescedence expressions, left factored.
+
+par_expression
+    : '(' expression ')'
+    ;
+
+atom
+    : LITERAL
+    | ID
+    | par_expression
+    ;
+
+primary
+    : atom
+    | subscript !!!
+    | call !!!
+    ;
+
+power
+    : primary ['^' unary]
+    ;
+
+unary
+    : power
+    | '-' unary
+    ;
+
+mul_expr
+    : unary
+    | mul_expr '*' unary
+    | mul_expr '/' unary
+    | mul_expr 'mod' unary
+    | mul_expr 'div' unary
+
+add_expr
+    : mul_expr
+    | add_expr '+' mul_expr
+    | add_expr '-' mul_expr
+    ;
+
+comparison
+    : add_expr (comp_op add_expr)*
+    ;
+
+not_expr
+    : comparison
+    | 'not' not_expr
+    ;
+    
+and_expr
+    : not_expr
+    | and_expr 'and' not_expr
+    ;
+
+xor_expr
+    : and_expr
+    | xor_expr 'xor' and_expr
+    ;
+
+or_expr
+    : xor_expr
+    | or_expr 'or' xor_expr
+    ;
+
+expression
+    : or_expr
+    | compound_expression
+    ;

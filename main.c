@@ -10,11 +10,17 @@ void test_lex_str(const char* str) {
   printf("\"%s\", of length %lu\n", str, strlen(str));
   stream *s = stream_fromstr(str);
   lexeme *a;
+  int line = 1;
   do {
     
     // get next lexeme
     a = scan(s);
-    printf("(lexeme) {class: %20s, content: %10s, line %2d, column %2d}\n",
+    if (a->line > line) {
+      printf("\n");
+      line = a->line;
+
+    }
+    printf("(lexeme) %-20s %10s   (line %2d, column %2d)\n",
 	   lexeme_class_tostr(a->type), a->content, a->line, a->column);
     if (a->type == EndOfFile) {
       free_lexeme(a);
@@ -27,9 +33,16 @@ void test_lex_str(const char* str) {
 }
 
 int main(int arc, const char *argv[]) {
-  test_lex_str("\n\n"
-	       "// squares the number x \n"
-	       "func cube(x):           \n"
-	       "  x^3.                \n\n");
+  test_lex_str("\nand or xor\n"
+	       "func quicksort(L):                         \n"
+	       "  cond:                                    \n"
+	       "    empty?(L) or singleton?(L) then L,     \n"
+	       "  otherwise:                               \n"
+	       "    let v, vs  = uncons(L).                \n"
+	       "        lower  = filter(fn x: x < v,  vs). \n"
+	       "	higher = filter(fn x: x >= v, vs). \n"
+	       "    in:                                    \n"
+	       "      sort(lower) + [v] + sort(higher).    \n"
+	       "\n\n");
   return 0;
 }

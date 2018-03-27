@@ -81,7 +81,7 @@
 #define lexer_error(message, ...)			     \
   fprintf(stderr,					     \
 	  "Lexer Error: " message " (line %d, column %d)\n", \
-	  __VA_ARGS__, input->line, input->column);		     \
+	  ##__VA_ARGS__, input->line, input->column);		     \
   exit(1)
 
 // This can be called through the macro lexeme() as
@@ -115,7 +115,7 @@ lexeme_class id_or_keyword(const char *contents) {
   check("func", Func);
   check("fn", Fn);
   check("use", Use);
-  check("def", Def);
+  check("as", As);
   check("let", Let);
   check("in", In);
   check("if", If);
@@ -124,6 +124,11 @@ lexeme_class id_or_keyword(const char *contents) {
   check("default", Default);
   check("cases", Cases);
   check("otherwise", Otherwise);
+  check("and", And);
+  check("or", Or);
+  check("xor", Xor);
+  check("true", True);
+  check("false", False);
   return Identifier;
 }
 #undef check
@@ -258,6 +263,11 @@ lexeme *scan(stream *input) {
   switch (last_munched) {
   case LINE_BREAK:
     goto start;
+  case EOF:
+    lexer_error("Unexpected EOF while lexing comment!\n"
+		"(It is impossible to create commented lines"
+		" without newlines in most text-editors, so"
+		" most likely something else is seriously wrong.)");
   default:
     goto skip_comment;
   }
@@ -464,6 +474,8 @@ lexeme *scan(stream *input) {
   case '\\':
     // Literal Slash; escape a character.
     goto scan_escaped_character;
+  case EOF:
+    lexer_error("Unexpected EOF while lexing string!");
   default:
     goto scan_string;
   }
@@ -496,6 +508,8 @@ lexeme *scan(stream *input) {
     // Alphanumberic characters (a-z,A-Z,0-9) and _ can follow
     // the first character in an identifier.
     goto scan_identifier;
+  case EOF:
+    lexer_error("Unexpected EOF while lexing identifier!");
   case '?':
     // A question mark is legal on the end, so don't spit
     // it out! It is only legal as the last character, however,
@@ -550,7 +564,7 @@ const char* lexeme_class_tostr(lexeme_class c) {
   check(Func);
   check(Fn);
   check(Use);
-  check(Def);
+  check(As);
   check(Let);
   check(In);
   check(If);
@@ -560,6 +574,11 @@ const char* lexeme_class_tostr(lexeme_class c) {
   check(Cases);
   check(Otherwise);
   check(Caret);
+  check(And);
+  check(Or);
+  check(Xor);
+  check(True);
+  check(False);
   default:
     return "<tostr() not implemented for this lexeme class>";
   }

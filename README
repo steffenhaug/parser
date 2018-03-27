@@ -1,0 +1,43 @@
+Parser
+======
+
+This is the first in a series of experiments, with the end
+goal being creating an interpreter for a programming language
+entirely from scratch, in C, using no tools or libraries
+save the C standard library, GCC, Make, and a text editor.
+Hand-writing a lexer and parser is the first step of many.
+
+The parser needs to be at least LL(k), because anything simpler
+struggles to recognize grammars with infix-operators. It is
+(relatively) easy to make grammars LL(k), so a backtracking parser
+is overkill. (It's not like I'm writing a C++ parser :-)) It
+is plausible that a predicated LL(k) parser is the optimal choice,
+because it allows me to "recycle" keywords, but this can most
+likely be avoided. The only one i would like to recycle is "let"
+anyways, and it is okay to use "def" for the other case.
+
+To distinguish these we need arbitrary lookahead
+
+    let a = c.
+
+    let x, y = h(a),
+           z = f(x, y)
+    in g(z).
+
+Which may be worth doing, because it is (a little bit) cooler
+than
+
+    def a = c.
+
+    let x, y = h(a),
+           z = f(x, y)
+    in
+        g(z).
+
+We _could_ potentiallt treat them the same way up to the 'in' keyword, 
+which is where the arbitrary lookahead becomes necessary.
+
+   We may be able to cheat and parse everything starting with 'let'
+blindly until we can make a decision, since the tree structure of the 
+expression up to that point is identical. We can find the 'in' keyword
+with LL(1) lookahead.
