@@ -32,7 +32,7 @@
 
 #define reset_munch				\
   stackp = 0;					\
-  munched[stackp] = sgetc(input);			\
+  munched[stackp] = sgetc(input);		\
   munch_start = input->column;
 /* Executed when the state machine enters the
  * start-state. Prepares the stack for scanning
@@ -43,28 +43,12 @@
 /* Peeks the stack to get the most recently munched
  * character.
  */
-  
 
-/* Yielding Macros (returns lexemes)
- * =================================
- * Returning lexemes are abstracted away, because it is
- * relatively error-prone:
- * 
- *  - It is necessary to null-terminate the stack 
- *    that stores the characters munched since the
- *    beginning of the current lexeme, because the
- *    stack is strcpy()-ed into the returned struct.
- *
- *  - It is verbose, because a lot of information is
- *    needed to create the lexeme structure. Verbose
- *    code is error-prone because it makes you skim
- *    through it.
- * 
- * "yield"-ing is appropriate nomenclature, because the
- * stream's state persists across calls to scan(), similar
- * to iterators in languages like Python, where the notion
- * of "yielding" means the same thing.
- *
+/* Outputting lexemes
+ * ==================
+ * These macros abstract away the process of "returning" a
+ * lexeme. The "yield"-nomenclature is borrowed from python,
+ * since the stream preserves its state across calls to scan.
  */
 
 #define yield(category)						\
@@ -81,7 +65,7 @@
 #define lexer_error(message, ...)			     \
   fprintf(stderr,					     \
 	  "Lexer Error: " message " (line %d, column %d)\n", \
-	  ##__VA_ARGS__, input->line, input->column);		     \
+	  ##__VA_ARGS__, input->line, input->column);	     \
   exit(1)
 
 // This can be called through the macro lexeme() as
