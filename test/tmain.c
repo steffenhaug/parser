@@ -4,8 +4,10 @@
 #include "test.h"
 #include "../lexer.h"
 #include "../stream.h"
+#include "../parser.h"
+#include "../ast.h"
 
-suite(stream, { 
+suite(Stream, { 
     // Verify that the source is not pointing to null.
     unit("create stream from file", {
 	stream *s = stream_fromfile("ptest");
@@ -120,13 +122,13 @@ suite(stream, {
     assert(l->type == kw);				\
     assert(strcmp(l->content, str) == 0)
 
-suite(lexer, {
+suite(Lexer, {
     unit("create and delete lexeme", {
-	lexeme *l = lexeme_new(EndOfFile, "eof", 1, 1);
+	lexeme *l = lexeme_new(LexEndOfFile, "eof", 1, 1);
 	assert(l != NULL);
 	
 	// check that no members are left uninitialized
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 	assert(strcmp(l->content, "eof") == 0);
 	assert(l->line == 1);
 	assert(l->column == 1);
@@ -159,7 +161,7 @@ suite(lexer, {
 	l = scan(s);
 	assert(l->line == 1);
 	assert(l->column == 10);
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 
 	// try to advance past EOF
 	l = scan(s);
@@ -169,7 +171,7 @@ suite(lexer, {
 	// have the same position.
 	assert(l->line == 1);
 	assert(l->column == 10);
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 
 	free_lexeme(l);
 	sclose(s);
@@ -180,19 +182,19 @@ suite(lexer, {
 	lexeme *l;
 
 	l = scan(s);
-	assert(l->type == DecInteger);
+	assert(l->type == LexDecInteger);
 	assert(strcmp(l->content, "0") == 0);
 
 	l = scan(s);
-	assert(l->type == DecInteger);
+	assert(l->type == LexDecInteger);
 	assert(strcmp(l->content, "1") == 0);
 
 	l = scan(s);
-	assert(l->type == DecInteger);
+	assert(l->type == LexDecInteger);
 	assert(strcmp(l->content, "666") == 0);
 
 	l = scan(s);
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 
 	free_lexeme(l);
 	sclose(s);
@@ -203,19 +205,19 @@ suite(lexer, {
 	lexeme *l;
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "0.43") == 0);
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "0.0") == 0);
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "5.23") == 0);
 
 	l = scan(s);
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 	
 	free_lexeme(l);
 	sclose(s);
@@ -226,27 +228,27 @@ suite(lexer, {
 	lexeme *l;
 
 	l = scan(s);
-	assert(l->type == HexInteger);
+	assert(l->type == LexHexInteger);
 	assert(strcmp(l->content, "0x0") == 0);
 
 	l = scan(s);
-	assert(l->type == HexInteger);
+	assert(l->type == LexHexInteger);
 	assert(strcmp(l->content, "0xABCDEF") == 0);
 
 	l = scan(s);
-	assert(l->type == HexInteger);
+	assert(l->type == LexHexInteger);
 	assert(strcmp(l->content, "0X12") == 0);
 
 	l = scan(s);
-	assert(l->type == BinInteger);
+	assert(l->type == LexBinInteger);
 	assert(strcmp(l->content, "0b101") == 0);
 
 	l = scan(s);
-	assert(l->type == BinInteger);
+	assert(l->type == LexBinInteger);
 	assert(strcmp(l->content, "0B01110") == 0);
 
 	l = scan(s);
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 	
 	free_lexeme(l);
 	sclose(s);
@@ -257,34 +259,34 @@ suite(lexer, {
 	lexeme *l;
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e1") == 0);
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1.2e1.2") == 0);
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e-1.2") == 0);
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e0") == 0);
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e-0.5") == 0);
 
 	l = scan(s);
-	assert(l->type == Float);
+	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e5") == 0);
 
 	l = scan(s);
-	assert(l->type == Dot);
+	assert(l->type == LexDot);
 
 	l = scan(s);
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 
 	free_lexeme(l);
 	sclose(s);
@@ -296,46 +298,46 @@ suite(lexer, {
 	lexeme *l;
 
 	l = scan(s);
-	assert(l->type == Plus);
+	assert(l->type == LexPlus);
 	l = scan(s);
-	assert(l->type == Minus);
+	assert(l->type == LexMinus);
 	l = scan(s);
-	assert(l->type == Asterisk);
+	assert(l->type == LexAsterisk);
 	l = scan(s);
-	assert(l->type == Slash);
+	assert(l->type == LexSlash);
 	l = scan(s);
-	assert(l->type == Dot);
+	assert(l->type == LexDot);
 	l = scan(s);
-	assert(l->type == Ellipsis);
+	assert(l->type == LexEllipsis);
 	l = scan(s);
-	assert(l->type == Equals);
+	assert(l->type == LexEquals);
 	l = scan(s);
-	assert(l->type == DoubleEquals);
+	assert(l->type == LexDoubleEquals);
 	l = scan(s);
-	assert(l->type == NotEqual);
+	assert(l->type == LexNotEqual);
 	l = scan(s);
-	assert(l->type == LessThan);
+	assert(l->type == LexLessThan);
 	l = scan(s);
-	assert(l->type == GreaterThan);
+	assert(l->type == LexGreaterThan);
 	l = scan(s);
-	assert(l->type == LessOrEq);
+	assert(l->type == LexLessOrEq);
 	l = scan(s);
-	assert(l->type == GreaterOrEq);
+	assert(l->type == LexGreaterOrEq);
 	// line break
 	l = scan(s);
-	assert(l->type == Colon);
+	assert(l->type == LexColon);
 	l = scan(s);
-	assert(l->type == Semicolon);
+	assert(l->type == LexSemicolon);
 	l = scan(s);
-	assert(l->type == Comma);
+	assert(l->type == LexComma);
 	l = scan(s);
-	assert(l->type == RightArrow);
+	assert(l->type == LexRightArrow);
 	l = scan(s);
-	assert(l->type == LeftArrow);
+	assert(l->type == LexLeftArrow);
 
 
 	l = scan(s);
-	assert(l->type == EndOfFile);
+	assert(l->type == LexEndOfFile);
 
 	free_lexeme(l);
 	sclose(s);
@@ -346,24 +348,24 @@ suite(lexer, {
 	lexeme *l;
 
 	l = scan(s);
-	assert(l->type == LeftParenthesis);
+	assert(l->type == LexLeftParenthesis);
 	l = scan(s);
-	assert(l->type == RightParenthesis);
+	assert(l->type == LexRightParenthesis);
 
 	l = scan(s);
-	assert(l->type == LeftCurlyBrace);
+	assert(l->type == LexLeftCurlyBrace);
 	l = scan(s);
-	assert(l->type == RightCurlyBrace);
+	assert(l->type == LexRightCurlyBrace);
 
 	l = scan(s);
-	assert(l->type == LeftSquareBracket);
+	assert(l->type == LexLeftSquareBracket);
 	l = scan(s);
-	assert(l->type == RightSquareBracket);
+	assert(l->type == LexRightSquareBracket);
 
 	l = scan(s);
-	assert(l->type == LessThan);
+	assert(l->type == LexLessThan);
 	l = scan(s);
-	assert(l->type == GreaterThan);
+	assert(l->type == LexGreaterThan);
 
 	free_lexeme(l);
 	sclose(s);
@@ -381,9 +383,9 @@ suite(lexer, {
 	lexeme *l;
 
 	l = scan(s);
-	assert(l->type == RightArrow);
+	assert(l->type == LexRightArrow);
 	l = scan(s);
-	assert(l->type == RightArrow);
+	assert(l->type == LexRightArrow);
 
 	free_lexeme(l);
 	sclose(s);
@@ -393,8 +395,8 @@ suite(lexer, {
 	stream *s = stream_fromstr(" \"foobar\" \"loodar\" ");
 	lexeme *l;
 
-	verify("foobar", String);
-	verify("loodar", String);
+	verify("foobar", LexString);
+	verify("loodar", LexString);
 	
 	free_lexeme(l);
 	sclose(s);
@@ -404,9 +406,9 @@ suite(lexer, {
 	stream *s = stream_fromstr("foobar foo123 loodar?");
 	lexeme *l;
 
-	verify("foobar", Identifier);
-	verify("foo123", Identifier);
-	verify("loodar?", Identifier);
+	verify("foobar", LexIdentifier);
+	verify("foo123", LexIdentifier);
+	verify("loodar?", LexIdentifier);
 
 	free_lexeme(l);
 	sclose(s);
@@ -418,35 +420,130 @@ suite(lexer, {
 				   "cases otherwise and or xor true false ");
 	lexeme *l;
 
-	verify("mod", Mod);
-	verify("div", Div);
-	verify("func", Func);
-	verify("fn", Fn);
-	verify("use", Use);
-	verify("as", As);
-	verify("let", Let);
-	verify("in", In);
-	verify("if", If);
-	verify("else", Else);
-	verify("switch", Switch);
-	verify("default", Default);
-	verify("cases", Cases);
-	verify("otherwise", Otherwise);
-	verify("and", And);
-	verify("or", Or);
-	verify("xor", Xor);
-	verify("true", True);
-	verify("false", False);
+	verify("mod", LexMod);
+	verify("div", LexDiv);
+	verify("func", LexFunc);
+	verify("fn", LexFn);
+	verify("use", LexUse);
+	verify("as", LexAs);
+	verify("let", LexLet);
+	verify("in", LexIn);
+	verify("if", LexIf);
+	verify("else", LexElse);
+	verify("switch", LexSwitch);
+	verify("default", LexDefault);
+	verify("cases", LexCases);
+	verify("otherwise", LexOtherwise);
+	verify("and", LexAnd);
+	verify("or", LexOr);
+	verify("xor", LexXor);
+	verify("true", LexTrue);
+	verify("false", LexFalse);
 
 	free_lexeme(l);
 	sclose(s);
     });
-
 })
 #undef verify
 
+
+suite(Parser, {
+    unit("match, LA, LT", {
+	// LT uses LA under the hood, so i mostly test LT
+	stream *s = stream_fromstr("666 + 42 * x");
+	parser p;
+	init_parser(&p, s);
+
+	if (0) // Print lookahead buffer.
+	  for (int i = 0; i < MAX_LOOKAHEAD; i++) {
+	    lexeme *a = p.lookahead[i];
+	    printf("(lexeme) %-20s %10s (line %2d, column %2d)\n",
+		   lexeme_class_tostr(a->type), a->content, a->line, a->column);
+	  }
+
+	assert(LT(&p, 0) == LexDecInteger);
+	assert(strcmp(LA(&p, 0)->content, "666") == 0);
+	assert(LA(&p, 0)->line == 1);
+	assert(LA(&p, 0)->column == 1);
+	assert(LA(&p, 0)->type == LexDecInteger);
+	
+	assert(LT(&p, 1) == LexPlus);
+	assert(LT(&p, 2) == LexDecInteger);
+	assert(LT(&p, 3) == LexAsterisk);
+	assert(LT(&p, 4) == LexIdentifier);
+
+	match(&p, LexDecInteger);
+	assert(LT(&p, 0) == LexPlus);
+	assert(LT(&p, 1) == LexDecInteger);
+	assert(LT(&p, 2) == LexAsterisk);
+	assert(LT(&p, 3) == LexIdentifier);
+
+	match(&p, LexPlus);
+	assert(LT(&p, 0) == LexDecInteger);
+	assert(LT(&p, 1) == LexAsterisk);
+	assert(LT(&p, 2) == LexIdentifier);
+
+	match(&p, LexDecInteger);
+	assert(LT(&p, 0) == LexAsterisk);
+	assert(LT(&p, 1) == LexIdentifier);
+
+	match(&p, LexAsterisk);
+	assert(LT(&p, 0) == LexIdentifier);
+
+	match(&p, LexIdentifier);
+
+	match(&p, LexEndOfFile);
+  
+	sclose(s);
+    });
+
+    unit("constructing ast", {});
+})
+
+suite(IR, {
+
+    unit("initializing a root node", {
+	ast root;
+	init_ast(&root, ASTRoot);
+	free_ast(&root);
+    });
+
+    unit("building minimal AST (+ 5 10) manually", {
+	ast root;
+	init_ast(&root, ASTRoot);
+
+	ast plus, five, ten;
+	init_ast(&five, ASTInteger);
+	five.value.i = 5;
+
+	init_ast(&ten, ASTInteger);
+	ten.value.i = 0;
+
+	init_ast(&plus, ASTPlus);
+	push_child(&plus, five);
+	push_child(&plus, ten);
+
+	push_child(&root, plus);
+
+	assert(root.children.data[0].type == ASTPlus);
+	assert(root.children.data[0].children.data[0].type == ASTInteger);
+	assert(root.children.data[0].children.data[1].type == ASTInteger);
+
+	fit_ast_vector(&root.children);
+	fit_ast_vector(&root.children.data[0].children);
+
+	assert(root.children.length = 1);
+	assert(root.children.data[0].children.length = 2);
+
+	free_ast(&root);
+    });
+
+})
+
 int main() {
-  test(stream);
-  test(lexer);
+  test(Stream);
+  test(Lexer);
+  test(Parser);
+  test(IR);
   return 0;
 }

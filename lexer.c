@@ -57,7 +57,7 @@
 
 #define yield_eof						\
   munched[stackp + 1] = '\0';					\
-  return lexeme(EndOfFile, "eof", input->line, munch_start)
+  return lexeme(LexEndOfFile, "eof", input->line, munch_start)
 
 /* Lexer Error 
  * ===========
@@ -74,7 +74,7 @@
 // which generalizes notation for initializing structures,
 // as you don't always need a function to set it up.
 lexeme *lexeme_new(lexeme_class type, const char *content, int line, int column) {
-  lexeme *t = malloc(sizeof(lexeme));
+  lexeme *t = malloc(sizeof(*t));
   t->type = type;
   t->line = line;
   t->column = column;
@@ -94,26 +94,26 @@ void free_lexeme(lexeme *l) {
 
 #define check(str, id) if (strcmp(contents, str) == 0) return id
 lexeme_class id_or_keyword(const char *contents) {
-  check("mod", Mod);
-  check("div", Div);
-  check("func", Func);
-  check("fn", Fn);
-  check("use", Use);
-  check("as", As);
-  check("let", Let);
-  check("in", In);
-  check("if", If);
-  check("else", Else);
-  check("switch", Switch);
-  check("default", Default);
-  check("cases", Cases);
-  check("otherwise", Otherwise);
-  check("and", And);
-  check("or", Or);
-  check("xor", Xor);
-  check("true", True);
-  check("false", False);
-  return Identifier;
+  check("mod", LexMod);
+  check("div", LexDiv);
+  check("func", LexFunc);
+  check("fn", LexFn);
+  check("use", LexUse);
+  check("as", LexAs);
+  check("let", LexLet);
+  check("in", LexIn);
+  check("if", LexIf);
+  check("else", LexElse);
+  check("switch", LexSwitch);
+  check("default", LexDefault);
+  check("cases", LexCases);
+  check("otherwise", LexOtherwise);
+  check("and", LexAnd);
+  check("or", LexOr);
+  check("xor", LexXor);
+  check("true", LexTrue);
+  check("false", LexFalse);
+  return LexIdentifier;
 }
 #undef check
 
@@ -160,17 +160,17 @@ lexeme *scan(stream *input) {
   case EOF:
     yield_eof;
   case '(':
-    yield(LeftParenthesis);
+    yield(LexLeftParenthesis);
   case ')':
-    yield(RightParenthesis);
+    yield(LexRightParenthesis);
   case '[':
-    yield(LeftSquareBracket);
+    yield(LexLeftSquareBracket);
   case ']':
-    yield(RightSquareBracket);
+    yield(LexRightSquareBracket);
   case '{':
-    yield(LeftCurlyBrace);
+    yield(LexLeftCurlyBrace);
   case '}':
-    yield(RightCurlyBrace);
+    yield(LexRightCurlyBrace);
   case '<':
     goto seen_less_than;
   case '>':
@@ -182,19 +182,19 @@ lexeme *scan(stream *input) {
   case '.':
     goto seen_dot;
   case ':':
-    yield(Colon);
+    yield(LexColon);
   case ',':
-    yield(Comma);
+    yield(LexComma);
   case ';':
-    yield(Semicolon);
+    yield(LexSemicolon);
   case '^':
-    yield(Caret);
+    yield(LexCaret);
   case '+':
-    yield(Plus);
+    yield(LexPlus);
   case '-':
     goto seen_minus;
   case '*':
-    yield(Asterisk);
+    yield(LexAsterisk);
   case '/':
     goto seen_slash;
   default:
@@ -208,14 +208,14 @@ lexeme *scan(stream *input) {
     goto seen_two_dots;
   default:
     spit;
-    yield(Dot);
+    yield(LexDot);
   }
 
  seen_two_dots:
   munch;
   switch (last_munched) {
   case '.':
-    yield(Ellipsis);
+    yield(LexEllipsis);
   default:
     lexer_error("Unexpected symbol \"%c\".", last_munched);
   }
@@ -226,10 +226,10 @@ lexeme *scan(stream *input) {
   case NONZERO_DIGIT:
     goto seen_digit;
   case '>':
-    yield(RightArrow);
+    yield(LexRightArrow);
   default:
     spit;
-    yield(Minus);
+    yield(LexMinus);
   }
 
  seen_slash:
@@ -239,7 +239,7 @@ lexeme *scan(stream *input) {
     goto skip_comment;
   default:
     spit;
-    yield(Slash);
+    yield(LexSlash);
   }
 
  skip_comment:
@@ -260,29 +260,29 @@ lexeme *scan(stream *input) {
   munch;
   switch (last_munched) {
   case '=':
-    yield(LessOrEq);
+    yield(LexLessOrEq);
   case '-':
-    yield(LeftArrow);
+    yield(LexLeftArrow);
   default:
     spit;
-    yield(LessThan);
+    yield(LexLessThan);
   }
   
  seen_greater_than:
   munch;
   switch (last_munched) {
   case '=':
-    yield(GreaterOrEq);
+    yield(LexGreaterOrEq);
   default:
     spit;
-    yield(GreaterThan);
+    yield(LexGreaterThan);
   }
 
  seen_bang:
   munch;
   switch (last_munched) {
   case '=':
-    yield(NotEqual);
+    yield(LexNotEqual);
   default:
     lexer_error("Expected \"=\" after \"!\". Found \"%c\".", last_munched);
   }
@@ -291,10 +291,10 @@ lexeme *scan(stream *input) {
   munch;
   switch (last_munched) {
   case '=':
-    yield(DoubleEquals);
+    yield(LexDoubleEquals);
   default:
     spit;
-    yield(Equals);
+    yield(LexEquals);
   }
 
   // Lexing Numbers
@@ -312,7 +312,7 @@ lexeme *scan(stream *input) {
     goto seen_bin;
   default:
     spit;
-    yield(DecInteger);
+    yield(LexDecInteger);
   }
 
  seen_digit:
@@ -327,7 +327,7 @@ lexeme *scan(stream *input) {
     goto seen_exp;
   default:
     spit;
-    yield(DecInteger);
+    yield(LexDecInteger);
   }
   
  seen_decimal_point:
@@ -338,7 +338,7 @@ lexeme *scan(stream *input) {
   default:
     spit;
     spit;
-    yield(DecInteger);
+    yield(LexDecInteger);
   }
   
  scan_frac:
@@ -351,7 +351,7 @@ lexeme *scan(stream *input) {
     goto seen_exp;
   default:
     spit;
-    yield(Float);
+    yield(LexFloat);
   }
     
  seen_exp:
@@ -381,7 +381,7 @@ lexeme *scan(stream *input) {
     goto seen_exp_decimal_point;
   default:
     spit;
-    yield(Float);
+    yield(LexFloat);
   }
 
  seen_exp_decimal_point:
@@ -392,7 +392,7 @@ lexeme *scan(stream *input) {
   default:
     spit;
     spit;
-    yield(Float);
+    yield(LexFloat);
   }
 
  scan_exp_frac:
@@ -402,7 +402,7 @@ lexeme *scan(stream *input) {
     goto scan_exp_frac;
   default:
     spit;
-    yield(Float);
+    yield(LexFloat);
   }
 
  seen_hex:
@@ -421,7 +421,7 @@ lexeme *scan(stream *input) {
     goto scan_hex;
   default:
     spit;
-    yield(HexInteger);
+    yield(LexHexInteger);
   }
 
  seen_bin:
@@ -442,7 +442,7 @@ lexeme *scan(stream *input) {
     goto scan_bin;
   default:
     spit;
-    yield(BinInteger);
+    yield(LexBinInteger);
   }
 
 
@@ -454,7 +454,7 @@ lexeme *scan(stream *input) {
   case '\"':
     // Literal Quote; end of string.
     drop;
-    yield(String);
+    yield(LexString);
   case '\\':
     // Literal Slash; escape a character.
     goto scan_escaped_character;
@@ -492,8 +492,6 @@ lexeme *scan(stream *input) {
     // Alphanumberic characters (a-z,A-Z,0-9) and _ can follow
     // the first character in an identifier.
     goto scan_identifier;
-  case EOF:
-    lexer_error("Unexpected EOF while lexing identifier!");
   case '?':
     // A question mark is legal on the end, so don't spit
     // it out! It is only legal as the last character, however,
@@ -512,57 +510,57 @@ lexeme *scan(stream *input) {
 #define check(id) case id: return #id
 const char* lexeme_class_tostr(lexeme_class c) {
   switch (c) {
-  check(DecInteger);
-  check(HexInteger);
-  check(BinInteger);
-  check(Float);
-  check(String);
-  check(Identifier);
-  check(LeftParenthesis);
-  check(RightParenthesis);
-  check(LeftCurlyBrace);
-  check(RightCurlyBrace);
-  check(LeftSquareBracket);
-  check(RightSquareBracket);
-  check(LeftArrow);
-  check(RightArrow);
-  check(Plus);
-  check(Minus);
-  check(Asterisk);
-  check(Slash);
-  check(Mod);
-  check(Div);
-  check(EndOfFile);
-  check(Dot);
-  check(Comma);
-  check(Colon);
-  check(Semicolon);
-  check(Ellipsis);
-  check(LessThan);
-  check(GreaterThan);
-  check(LessOrEq);
-  check(GreaterOrEq);
-  check(Equals);
-  check(DoubleEquals);
-  check(NotEqual);
-  check(Func);
-  check(Fn);
-  check(Use);
-  check(As);
-  check(Let);
-  check(In);
-  check(If);
-  check(Else);
-  check(Switch);
-  check(Default);
-  check(Cases);
-  check(Otherwise);
-  check(Caret);
-  check(And);
-  check(Or);
-  check(Xor);
-  check(True);
-  check(False);
+  check(LexDecInteger);
+  check(LexHexInteger);
+  check(LexBinInteger);
+  check(LexFloat);
+  check(LexString);
+  check(LexIdentifier);
+  check(LexLeftParenthesis);
+  check(LexRightParenthesis);
+  check(LexLeftCurlyBrace);
+  check(LexRightCurlyBrace);
+  check(LexLeftSquareBracket);
+  check(LexRightSquareBracket);
+  check(LexLeftArrow);
+  check(LexRightArrow);
+  check(LexPlus);
+  check(LexMinus);
+  check(LexAsterisk);
+  check(LexSlash);
+  check(LexMod);
+  check(LexDiv);
+  check(LexEndOfFile);
+  check(LexDot);
+  check(LexComma);
+  check(LexColon);
+  check(LexSemicolon);
+  check(LexEllipsis);
+  check(LexLessThan);
+  check(LexGreaterThan);
+  check(LexLessOrEq);
+  check(LexGreaterOrEq);
+  check(LexEquals);
+  check(LexDoubleEquals);
+  check(LexNotEqual);
+  check(LexFunc);
+  check(LexFn);
+  check(LexUse);
+  check(LexAs);
+  check(LexLet);
+  check(LexIn);
+  check(LexIf);
+  check(LexElse);
+  check(LexSwitch);
+  check(LexDefault);
+  check(LexCases);
+  check(LexOtherwise);
+  check(LexCaret);
+  check(LexAnd);
+  check(LexOr);
+  check(LexXor);
+  check(LexTrue);
+  check(LexFalse);
   default:
     return "<tostr() not implemented for this lexeme class>";
   }

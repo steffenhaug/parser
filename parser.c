@@ -2,6 +2,13 @@
 
 #include "parser.h"
 
+/*
+ * Parser Management
+ * =================
+ * advance, match, LA and LT are used to encode the
+ * grammar in a recursive descent parser.
+ */
+
 int advance(parser *p) {
   // Free the previous lexeme
   free_lexeme(p->lookahead[p->position]);
@@ -36,7 +43,7 @@ lexeme *LA(parser *p, size_t i) {
 }
 
 lexeme_class LT(parser *p, size_t i) {
-  return p->lookahead[i + p->position]->type;
+  return LA(p, i)->type;
 }
 
 int match(parser *p, lexeme_class cls) {
