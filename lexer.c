@@ -56,8 +56,12 @@
   return lexeme(category, munched, input->line, munch_start)
 
 #define yield_eof						\
+<<<<<<< HEAD
   munched[stackp + 1] = '\0';					\
   return lexeme(LexEndOfFile, "eof", input->line, munch_start)
+=======
+  return lexeme(EndOfFile, "eof", input->line, munch_start)
+>>>>>>> master
 
 /* Lexer Error 
  * ===========
