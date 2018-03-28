@@ -4,45 +4,33 @@
 
 #include "stream.h"
 #include "lexer.h"
+#include "parser.h"
 
-void test_lex_str(const char* str) {
-  printf("lexed string: ");
-  printf("\"%s\", of length %lu\n", str, strlen(str));
+void test_parse_str(const char* str) {
   stream *s = stream_fromstr(str);
-  lexeme *a;
-  int line = 1;
-  do {
-    
-    // get next lexeme
-    a = scan(s);
-    if (a->line > line) {
-      printf("\n");
-      line = a->line;
+  parser p;
+  init_parser(&p, s);
 
+  if (1) // Print lookahead buffer.
+    for (int i = 0; i < MAX_LOOKAHEAD; i++) {
+      lexeme *a = p.lookahead[i];
+      printf("(lexeme) %-20s %10s (line %2d, column %2d)\n",
+	     lexeme_class_tostr(a->type), a->content, a->line, a->column);
     }
-    printf("(lexeme) %-20s %10s   (line %2d, column %2d)\n",
-	   lexeme_class_tostr(a->type), a->content, a->line, a->column);
-    if (a->type == EndOfFile) {
-      free_lexeme(a);
-      break;
+
+  printf("%s\n", LA(&p, 0)->content);
+  match(&p, LexDecInteger);
+  match(&p, LexPlus);
+  match(&p, LexDecInteger);
+  match(&p, LexAsterisk);
+  match(&p, LexIdentifier);
+  match(&p, LexCaret);
   
-    }
-    free_lexeme(a);
-  } while (1);
   sclose(s);
 }
 
 int main(int arc, const char *argv[]) {
-  test_lex_str("\nand or xor\n"
-	       "func quicksort(L):                         \n"
-	       "  cond:                                    \n"
-	       "    empty?(L) or singleton?(L) then L,     \n"
-	       "  otherwise:                               \n"
-	       "    let v, vs  = uncons(L).                \n"
-	       "        lower  = filter(fn x: x < v,  vs). \n"
-	       "	higher = filter(fn x: x >= v, vs). \n"
-	       "    in:                                    \n"
-	       "      sort(lower) + [v] + sort(higher).    \n"
-	       "\n\n");
+  //test_parse_str("666 + 42 * e^(-x^2) mod 12 - 420 / 69");
+  
   return 0;
 }

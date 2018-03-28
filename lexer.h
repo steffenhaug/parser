@@ -187,57 +187,61 @@
 // ... X macro?
 typedef enum {
   // "Container" Lexemes
-  DecInteger, // Decimal integers, like 1024
-  HexInteger, // Hexadecimal integers, like 0xFF00FF
-  BinInteger, // Binary integers, like 0b11011
-  Float,      // Floats, like 12.3, but also 12e3 (!) and 1.2e3 and 1e2.3 
-  String,     // Strings, like "hello, world"
-  Identifier, // Names identifiyng things like variables
+  LexDecInteger, // Decimal integers, like 1024
+  LexHexInteger, // Hexadecimal integers, like 0xFF00FF
+  LexBinInteger, // Binary integers, like 0b11011
+  LexFloat,      // Floats, like 12.3, but also 12e3 (!) and 1.2e3 and 1e2.3 
+  LexString,     // Strings, like "hello, world"
+  LexIdentifier, // Names identifiyng things like variables
   // Brackets
-  LeftParenthesis,    // (
-  RightParenthesis,   // )
-  LeftCurlyBrace,     // {
-  RightCurlyBrace,    // }
-  LeftSquareBracket,  // [
-  RightSquareBracket, // ]
+  LexLeftParenthesis,    // (
+  LexRightParenthesis,   // )
+  LexLeftCurlyBrace,     // {
+  LexRightCurlyBrace,    // }
+  LexLeftSquareBracket,  // [
+  LexRightSquareBracket, // ]
   // Operators (< and > can also be brackets, of course)
-  LessThan,     // <
-  GreaterThan,  // >
-  LessOrEq,     // <=
-  GreaterOrEq,  // >=
-  Equals,       // =
-  DoubleEquals, // ==
-  NotEqual,     // !=
-  LeftArrow,    // <-
-  RightArrow,   // ->
-  Dot,          // .
-  Comma,        // ,
-  Colon,        // :
-  Semicolon,    // ;
-  Ellipsis,     // ...
-  Minus,        // -
-  Plus,         // +
-  Asterisk,     // *
-  Slash,        // /
-  Caret,        // ^
+  LexLessThan,     // <
+  LexGreaterThan,  // >
+  LexLessOrEq,     // <=
+  LexGreaterOrEq,  // >=
+  LexEquals,       // =
+  LexDoubleEquals, // ==
+  LexNotEqual,     // !=
+  LexLeftArrow,    // <-
+  LexRightArrow,   // ->
+  LexDot,          // .
+  LexComma,        // ,
+  LexColon,        // :
+  LexSemicolon,    // ;
+  LexEllipsis,     // ...
+  LexMinus,        // -
+  LexPlus,         // +
+  LexAsterisk,     // *
+  LexSlash,        // /
+  LexCaret,        // ^
   // Reserved Keywords
-  Div, Mod,
-  And, Or, Xor,
-  True, False,
-  Func,
-  Fn,
-  Use,
-  As,
-  Let,
-  In,
-  If,
-  Else,
-  Switch,
-  Default,
-  Cases,
-  Otherwise,
+  LexDiv,
+  LexMod,
+  LexAnd,
+  LexOr,
+  LexXor,
+  LexTrue,
+  LexFalse,
+  LexFunc,
+  LexFn,
+  LexUse,
+  LexAs,
+  LexLet,
+  LexIn,
+  LexIf,
+  LexElse,
+  LexSwitch,
+  LexDefault,
+  LexCases,
+  LexOtherwise,
   // EOF
-  EndOfFile,
+  LexEndOfFile,
 } lexeme_class;
 
 typedef struct {

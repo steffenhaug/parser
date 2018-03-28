@@ -6,7 +6,7 @@
 // grammar,  there is no  guarantee  that it is
 // 100% correct, or even complete.
 
-input
+root
     : statement*
     ;
 

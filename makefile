@@ -1,14 +1,12 @@
-debugbuild:
-	gcc -o parser lexer.c main.c stream.c
+CFILES = stream.c lexer.c parser.c ast.c
 
-productionbuild:
-	gcc -o parser -O2 lexer.c main.c stream.c
+debug:
+	gcc -o parser.out main.c $(CFILES)
+
+prod:
+	gcc -o parser.out -O2 main.c $(CFILES)
 
 .PHONY: test
 test:
-	gcc -O0 -o test/parser_test lexer.c stream.c test/tmain.c
-	cd test && ./parser_test
-
-.PHONY: macroexpansion
-macroexpansion:
-	gcc -E lexer.c main.c stream.c > macroe_xpansion
+	gcc -O0 -o test/parser_test.out test/tmain.c $(CFILES)
+	cd test && ./parser_test.out

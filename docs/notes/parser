@@ -1,0 +1,42 @@
+Parser plans
+============
+The parser will be  a  hand-written recursive-descent
+parser. The grammar may need arbitrary lookahead, but
+i should do my best to avoid it,  since LL(k) parsers
+are so simple.
+
+LL(k) implementation:
+---------------------
+
+The functions need to pass around a structure to read
+lexemes from. This scructure could  in  principle  be
+global, but this is probably not preferable.
+   One solution, that is probably pretty good,  is to
+place it on the stack of the root function,  and hand
+a pointer to the children.
+
+```
+struct stream_interface {
+    stream *input;
+    lexeme *lookahead[k];
+    size_t position;
+}
+
+void advance(stream_interface *interface) {
+    // Advancing the ringbuffer
+    // ------------------------
+    // get a new lexeme into where we are currently at
+    free_lexeme(interface->lookahead[interface->position]);
+    interface->lookahead[interface->position] = scan(interface->input);
+    // and move ahead, potentially wrapping around
+    interface->position++;
+    interface->position %= k;
+}
+
+void match(stream_interface *interface, lexeme_class c) {
+    if (interface->lookahead[interface->position]->type != c)
+        parser_error("oops");
+    else
+        advance(interface);
+}
+```

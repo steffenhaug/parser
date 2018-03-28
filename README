@@ -1,43 +1,61 @@
 Parser
 ======
 
-This is the first in a series of experiments, with the end
-goal being creating an interpreter for a programming language
-entirely from scratch, in C, using no tools or libraries
-save the C standard library, GCC, Make, and a text editor.
-Hand-writing a lexer and parser is the first step of many.
+This is the first in a series  of experiments, with the end goal being
+creating  an  interpreter for  a  programming  language entirely  from
+scratch,  in C,  using  no  tools or  libraries  save  the C  standard
+library,  GCC, Make,  and a  text  editor.  Hand-writing  a lexer  and
+parser is the first step of many.
 
-The parser needs to be at least LL(k), because anything simpler
-struggles to recognize grammars with infix-operators. It is
-(relatively) easy to make grammars LL(k), so a backtracking parser
-is overkill. (It's not like I'm writing a C++ parser :-)) It
-is plausible that a predicated LL(k) parser is the optimal choice,
-because it allows me to "recycle" keywords, but this can most
-likely be avoided. The only one i would like to recycle is "let"
-anyways, and it is okay to use "def" for the other case.
+The  parser needs  to  be  at least  LL(k),  because anything  simpler
+struggles   to  recognize   grammars  with   infix-operators.  It   is
+(relatively) easy to make grammars  LL(k), so a backtracking parser is
+overkill. (It's not like I'm writing a C++ parser :-)) It is plausible
+that  a predicated  parser is necessary, 
 
-To distinguish these we need arbitrary lookahead
+The trouble with 'let'
+----------------------
+If we  want to  be certain of  exactly what we  are parsing  before we
+start  munching   tokens,  we   need  arbitrary  lookahead   to  parse
+let-blocks
 
-    let a = c.
+    // let for symbol definitions.
+    let a = ... ,
+    	b = ... .
 
-    let x, y = h(a),
-           z = f(x, y)
-    in g(z).
+    // let for let ... in ... blocks.
+    let x = f(a),
+    	y = g(a),
+	z = h(a)
+    in t(x, y, z).
 
-Which may be worth doing, because it is (a little bit) cooler
-than
+so we can figure out if there is an 'in'-lexeme before the terminating
+dot. The problem can be solved easily by using another keyword for one
+of the two -- problem gone!
 
-    def a = c.
+    // def for symbol definitions.
+    let a = ... ,
+    	b = ... .
 
-    let x, y = h(a),
-           z = f(x, y)
-    in
-        g(z).
+    // let for let ... in ... blocks.
+    let x = f(a),
+    	y = g(a),
+	z = h(a)
+    in t(x, y, z).
 
-We _could_ potentiallt treat them the same way up to the 'in' keyword, 
-which is where the arbitrary lookahead becomes necessary.
+This is  not quite as elegant,  because the two _really_  mean similar
+things.  They both  define symbols!  The difference is  only the scope
+they  define the  symbols  in.  I specifically  don't  want a  million
+keywords.
 
-   We may be able to cheat and parse everything starting with 'let'
-blindly until we can make a decision, since the tree structure of the 
+We may be able to _cheat_  and parse everything that starts with 'let'
+blindly until we can make a  decision, since the tree structure of the
 expression up to that point is identical. We can find the 'in' keyword
 with LL(1) lookahead.
+
+To-do list
+----------
+- Update the to-do list more than once
+- Refactor the lexer to return error codes instead of crash
+  - Write tests for failing cases that we can now test for
+- Modularize the unit-testing library
