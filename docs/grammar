@@ -64,26 +64,21 @@ power
     : primary ['^' unary]
     ;
 
-unary
+factor
     : power
-    | '-' unary
+    | '-' factor
     ;
 
-mul_expr
-    : unary
-    | mul_expr '*' unary
-    | mul_expr '/' unary
-    | mul_expr 'mod' unary
-    | mul_expr 'div' unary
+term
+    : factor (('*'|'/'|'mod') factor)*
+    ;
 
-add_expr
-    : mul_expr
-    | add_expr '+' mul_expr
-    | add_expr '-' mul_expr
+arith_expr
+    : term (('+'|'-') term)*
     ;
 
 comparison
-    : add_expr (comp_op add_expr)*
+    : arith_expr (comp_op add_expr)*
     ;
 
 not_expr
@@ -92,18 +87,11 @@ not_expr
     ;
     
 and_expr
-    : not_expr
-    | and_expr 'and' not_expr
-    ;
-
-xor_expr
-    : and_expr
-    | xor_expr 'xor' and_expr
+    : not_expr ('and' not_expr)*
     ;
 
 or_expr
-    : xor_expr
-    | or_expr 'or' xor_expr
+    : and_expr (('or'|'xor') and_expr)*
     ;
 
 expression

@@ -5,6 +5,7 @@
 #include "stdbool.h"
 #include "stream.h"
 #include "lexer.h"
+#include "ast.h"
 
 #define MAX_LOOKAHEAD 8
 
@@ -15,6 +16,9 @@
 
 #define STREAM_IS_NULL 10
 #define MATCH_FAILED 20
+#define MATCH_STORE_NO_VALUE 21
+#define EXPECTED_ATOM 30
+#define FAILED_MALLOC 40
 
 #define parser_error(message, ...)			     \
   fprintf(stderr,					     \
@@ -26,6 +30,40 @@ typedef struct {
   size_t position;
   lexeme *lookahead[MAX_LOOKAHEAD];
 } parser;
+
+
+/*
+ * Parsing functions
+ * =================
+ */
+int parse_root(parser *p, ast *root);
+int parse_statement(parser *p, ast *stmt);
+
+int parse_par_expr(parser *p, ast *expr);
+
+int parse_atom(parser *p, ast *atom);
+int parse_call(parser *p, ast *call);
+int parse_subscript(parser *p, ast *subsc);
+
+int parse_primary_expr(parser *p, ast *expr);
+
+// operator expressions
+
+// mathematical
+int parse_power(parser *p, ast *expr);
+int parse_factor(parser *p, ast *expr);
+int parse_term(parser *p, ast *expr);
+int parse_arith_expr(parser *p, ast *expr);
+
+
+// boolean
+int parse_comp_expr(parser *p, ast *expr);
+int parse_not_expr(parser *p, ast *expr);
+int parse_and_expr(parser *p, ast *expr);
+int parse_or_expr(parser *p, ast *expr);
+
+int parse_expression(parser *p, ast *expr);
+
 
 int init_parser(parser *p, stream *s);
 
@@ -48,3 +86,4 @@ lexeme *LA(parser *p, size_t i);
 lexeme_class LT(parser *p, size_t i);
 
 int match(parser *p, lexeme_class cls);
+int match_store_value(parser *p, lexeme_class cls, ast *node);

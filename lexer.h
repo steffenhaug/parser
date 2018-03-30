@@ -21,7 +21,10 @@
  */
 
 #pragma once
+
+#include <stdbool.h>
 #include "stream.h"
+
 
 // THe maximum stack depth is  also the max length of
 // strings, identifiers and so on.
@@ -223,6 +226,7 @@ typedef enum {
   // Reserved Keywords
   LexDiv,
   LexMod,
+  LexNot,
   LexAnd,
   LexOr,
   LexXor,
@@ -251,6 +255,8 @@ typedef struct {
   int column;
 } lexeme;
 
+/* managing lexemes */
+
 #define lexeme(type, content, line, column)	\
   lexeme_new(type, content, line, column)
 
@@ -258,6 +264,7 @@ lexeme *lexeme_new(lexeme_class type, const char* content, int l, int c);
 
 void free_lexeme(lexeme *l);
 
-const char* lexeme_class_tostr(lexeme_class c);
-
 lexeme *scan(stream *s);
+
+const char* lexeme_class_tostr(lexeme_class c);
+bool is_comparison(lexeme_class cls);

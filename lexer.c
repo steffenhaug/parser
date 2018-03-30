@@ -107,6 +107,7 @@ lexeme_class id_or_keyword(const char *contents) {
   check("default", LexDefault);
   check("cases", LexCases);
   check("otherwise", LexOtherwise);
+  check("not", LexNot);
   check("and", LexAnd);
   check("or", LexOr);
   check("xor", LexXor);
@@ -560,8 +561,17 @@ const char* lexeme_class_tostr(lexeme_class c) {
   check(LexXor);
   check(LexTrue);
   check(LexFalse);
-  default:
-    return "<tostr() not implemented for this lexeme class>";
+  check(LexNot);
   }
 }
 #undef check
+
+bool is_comparison(lexeme_class cls) {
+  return
+    cls == LexLessThan ||
+    cls == LexLessOrEq ||
+    cls == LexGreaterThan ||
+    cls == LexGreaterOrEq ||
+    cls == LexNotEqual ||
+    cls == LexDoubleEquals;
+}

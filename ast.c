@@ -28,9 +28,24 @@ int push_child(ast *node, ast child) {
   return error_code;
 }
 
+/* ast_span
+ * ========
+ */
+
+void set_span_start(ast *root, int line, int column) {
+  root->span.start_line = line;
+  root->span.start_column = column;
+}
+
+void set_span_end(ast *root, int line, int column) {
+  root->span.end_line = line;
+  root->span.end_column = column;
+}
+
+
 /*
- * AST Vector
- * =============
+ * ast_vector
+ * ==========
  */
 
 void init_ast_vector(ast_vector *nodes) {

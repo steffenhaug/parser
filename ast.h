@@ -1,20 +1,47 @@
+#pragma once
+
 #include <stdio.h>
+#include <stdbool.h>
 
 #define AST_VECTOR_GROWTH_FACTOR 2
 #define AST_VECTOR_MIN_CAPACITY 2
 
 // ... X macro? :-)
 typedef enum {
+  ASTRoot,
+  /* Atoms */
   ASTInteger,
   ASTFloat,
   ASTString,
-  ASTRoot,
+  ASTIdentifier,
+  ASTBool,
+  /* Math Expressions */
+  ASTPow,
+  ASTMul,
+  ASTDiv,
+  ASTMod,
   ASTPlus,
   ASTMinus,
+  ASTUnaryMinus,
+  /* Comparisons  */
+  ASTComp,
+  ASTCompOps,
+  ASTCompOperands,
+  ASTLess,
+  ASTLessOrEqual,
+  ASTEquals,
+  ASTNotEqual,
+  ASTGreaterOrEqual,
+  ASTGreater,
+  /* Boolean Logic */
+  ASTAnd,
+  ASTXor,
+  ASTOr,
+  ASTNot,
 } ast_class;
 
 typedef struct {
-  unsigned int start_line, start_column, end_line, end_column;
+  int start_line, start_column, end_line, end_column;
 } ast_span;
 
 typedef struct {
@@ -26,7 +53,8 @@ typedef struct {
 typedef union {
   long long i;
   double d;
-  const char* s;
+  bool b;
+  char* s;
 } ast_value;
 
 typedef struct ast {
@@ -47,6 +75,15 @@ int free_ast(ast* node);
 
 // this is just as mean as it sounds
 int push_child(ast* node, ast child);
+
+
+/* ast_span
+ * ========
+ * A span represent a nodes start and end position
+ * in the text. This is necessary for reporting errors.
+ */
+void set_span_start(ast *root, int line, int column);
+void set_span_end(ast *root, int line, int column);
 
 /*
  * ast_vector management

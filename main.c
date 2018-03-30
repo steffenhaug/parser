@@ -30,7 +30,5 @@ void test_parse_str(const char* str) {
 }
 
 int main(int arc, const char *argv[]) {
-  //test_parse_str("666 + 42 * e^(-x^2) mod 12 - 420 / 69");
-  
   return 0;
 }

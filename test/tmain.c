@@ -255,7 +255,7 @@ suite(Lexer, {
     });
 
     unit("lexing scientific notation", {
-	stream *s = stream_fromstr("1e1 1.2e1.2 1e-1.2 1e0 1e-0.5 1e5.");
+	stream *s = stream_fromstr("1e1 1.2e2 1e-2 1e0 1e5.");
 	lexeme *l;
 
 	l = scan(s);
@@ -264,19 +264,15 @@ suite(Lexer, {
 
 	l = scan(s);
 	assert(l->type == LexFloat);
-	assert(strcmp(l->content, "1.2e1.2") == 0);
+	assert(strcmp(l->content, "1.2e2") == 0);
 
 	l = scan(s);
 	assert(l->type == LexFloat);
-	assert(strcmp(l->content, "1e-1.2") == 0);
+	assert(strcmp(l->content, "1e-2") == 0);
 
 	l = scan(s);
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e0") == 0);
-
-	l = scan(s);
-	assert(l->type == LexFloat);
-	assert(strcmp(l->content, "1e-0.5") == 0);
 
 	l = scan(s);
 	assert(l->type == LexFloat);
@@ -497,7 +493,309 @@ suite(Parser, {
 	sclose(s);
     });
 
-    unit("constructing ast", {});
+    unit("parse empty stream", {
+	stream *s = stream_fromstr("");
+	parser p;
+	init_parser(&p, s);
+
+	ast root;
+	parse_root(&p, &root);
+
+	assert(root.type == ASTRoot);
+	assert(root.value.i == 0);
+
+	// Nothing is even malloced if the stream is empty
+	assert(root.children.length == 0);
+	assert(root.children.capacity == 0);
+	assert(root.children.data == NULL);
+
+	assert(root.span.start_line ==
+	       root.span.end_line == 1);
+
+	assert(root.span.start_column ==
+	       root.span.end_column == 1);
+
+	sclose(s);
+    });
+
+    unit("parse atoms", {
+	stream *s = stream_fromstr("5 0xFF 0b10 0.42 \"f o o b a r\" x true false");
+	parser p;
+	init_parser(&p, s);
+
+	ast atom;
+	int error_code = 0;
+
+	// 5
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTInteger);
+	assert(atom.value.i == 5);
+
+	// 0xFF
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTInteger);
+	assert(atom.value.i == 255);
+
+	// 0b10
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTInteger);
+	assert(atom.value.i == 2);
+
+	// 0.42
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTFloat);
+	assert(atom.value.d == 0.42);
+
+	// "f o o b a r"
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTString);
+	assert(strcmp(atom.value.s, "f o o b a r") == 0);
+
+	// x (identifier)
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTIdentifier);
+	assert(strcmp(atom.value.s, "x") == 0);
+
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTBool);
+	assert(atom.value.b == true);
+
+	error_code = parse_atom(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTBool);
+	assert(atom.value.b == false);
+    });
+
+    unit("parse primary expr", {
+	stream *s = stream_fromstr("2.3 4.5e6");
+	parser p;
+	init_parser(&p, s);
+	
+	ast atom;
+	int error_code = 0;
+
+	error_code = parse_primary_expr(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTFloat);
+	assert(atom.value.d == 2.3);
+
+	error_code = parse_primary_expr(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTFloat);
+	assert(atom.value.d == atof("4.5e6"));
+
+
+	printf("remember: atof(\"4.5e6.7\") = %.3f, so the elxer needs a change\n",
+	       atom.value.d);
+	printf("remember to test function and subscript "
+	       "primary expressions as well.\n");
+    });
+
+    unit("parse factors", {
+	stream *s = stream_fromstr("-a -5 3^2");
+	parser p;
+	init_parser(&p, s);
+
+	ast n;
+	int error_code = 0;
+
+	error_code = parse_factor(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTUnaryMinus);
+
+	// notice! negative integers are lexed as integers,
+	// so "-5" is not a unary expression.
+	error_code = parse_factor(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTInteger); // !!!
+	assert(n.value.i = -5);
+
+	error_code = parse_factor(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTPow); // !!!
+	assert(n.value.i = -5);
+    });
+
+    unit("parse power expressions", {
+	stream *s = stream_fromstr("2^3 2.6^12 2^-3.4");
+	parser p;
+	init_parser(&p, s);
+
+	ast n;
+	int error_code = 0;
+
+	error_code = parse_power(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTPow);
+
+	error_code = parse_power(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTPow);
+
+	error_code = parse_power(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTPow);
+    });
+
+    unit("parse terms", {
+	stream *s = stream_fromstr("2 * 3       4 / 2     15 mod 4");
+	parser p;
+	init_parser(&p, s);
+
+	ast n;
+	int error_code = 0;
+
+	error_code = parse_term(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTMul);
+
+	error_code = parse_term(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTDiv);
+
+	error_code = parse_term(&p, &n);
+	assert(!error_code);
+	assert(n.type == ASTMod);
+
+    });
+
+    unit("parse arithmetic", {
+	stream *s = stream_fromstr("2 + 6 * 7 - 4 mod 6");
+	//                   terms: -   -----   -------
+	parser p;
+	init_parser(&p, s);
+
+	ast tree;
+	int error_code = 0;
+
+	error_code = parse_arith_expr(&p, &tree);
+	assert(!error_code);
+	assert(tree.type = ASTMinus);
+	assert(tree.children.data[0].type == ASTPlus);
+	assert(tree.children.data[0].children.data[1].type == ASTMul);
+	assert(tree.children.data[1].type == ASTMod);
+    });
+
+    unit("parse comparisons", {
+	stream *s = stream_fromstr("a < b     x < 5 < y   ");
+	parser p;
+	init_parser(&p, s);
+
+	ast tree;
+	int error_code = 0;
+
+	error_code = parse_comp_expr(&p, &tree);
+	assert(!error_code);
+
+	assert(tree.type == ASTComp);
+	assert(tree.children.data[0].type == ASTIdentifier);
+	assert(tree.children.data[1].type == ASTCompOps);
+	assert(tree.children.data[2].type == ASTCompOperands);
+
+	assert(tree.children.data[1].children.length == 1);
+	assert(tree.children.data[2].children.length == 1);
+
+	assert(tree.children.data[1].children.data[0].type == ASTLess);
+	assert(tree.children.data[2].children.data[0].type == ASTIdentifier);
+
+	error_code = parse_comp_expr(&p, &tree);
+	assert(!error_code);
+
+	assert(tree.children.data[0].type == ASTIdentifier);
+	assert(tree.children.data[1].type == ASTCompOps);
+	assert(tree.children.data[2].type == ASTCompOperands);
+
+	assert(tree.children.data[1].children.length == 2);
+	assert(tree.children.data[2].children.length == 2);
+    });
+
+    unit("parse not statements", {
+	stream *s = stream_fromstr("true     not true    not false ");
+	parser p;
+	init_parser(&p, s);
+
+	ast tree;
+	int error_code = 0;
+
+	error_code = parse_not_expr(&p, &tree);
+	assert(!error_code);
+	assert(tree.type == ASTBool);
+
+	error_code = parse_not_expr(&p, &tree);
+	assert(!error_code);
+	assert(tree.type == ASTNot);
+	assert(tree.children.data[0].type == ASTBool);
+	assert(tree.children.data[0].value.b == true);
+
+	error_code = parse_not_expr(&p, &tree);
+	assert(!error_code);
+	assert(tree.type == ASTNot);
+	assert(tree.children.data[0].type == ASTBool);
+	assert(tree.children.data[0].value.b == false);
+    });
+
+    unit("parse and expressions", {
+	stream *s = stream_fromstr("a and b   not a and b   a and not b");
+	parser p;
+	init_parser(&p, s);
+
+	ast tree;
+	int error_code = 0;
+
+	error_code = parse_and_expr(&p, &tree);
+	assert(!error_code);
+	assert(tree.type == ASTAnd);
+	assert(tree.children.data[0].type == ASTIdentifier);
+	assert(tree.children.data[1].type == ASTIdentifier);
+
+	error_code = parse_and_expr(&p, &tree);
+	assert(!error_code);
+	assert(tree.type == ASTAnd);
+	assert(tree.children.data[0].type == ASTNot);
+	assert(tree.children.data[1].type == ASTIdentifier);
+
+	error_code = parse_and_expr(&p, &tree);
+	assert(!error_code);
+	assert(tree.type == ASTAnd);
+	assert(tree.children.data[0].type == ASTIdentifier);
+	assert(tree.children.data[1].type == ASTNot);
+    });
+
+    unit("parse or (and xor) exprs", {
+	stream *s = stream_fromstr("a or b     a xor b");
+	parser p;
+	init_parser(&p, s);
+
+	ast tree;
+	int error_code = 0;
+
+	error_code = parse_or_expr(&p, &tree);
+	assert(!error_code);
+
+	error_code = parse_or_expr(&p, &tree);
+	assert(!error_code);
+    });
+    
+    unit("autoconstructing ast from '5 + 10.'", {
+	stream *s = stream_fromstr("5 + 10.");
+	parser p;
+	init_parser(&p, s);
+
+	ast root;
+	int error_code = parse_root(&p, &root);
+	assert(!error_code);
+
+	assert(root.children.data[0].type == ASTPlus);
+	assert(root.children.data[0].children.data[0].type == ASTInteger);
+	assert(root.children.data[0].children.data[1].type == ASTInteger);
+    });
 })
 
 suite(IR, {
@@ -543,7 +841,7 @@ suite(IR, {
 int main() {
   test(Stream);
   test(Lexer);
-  test(Parser);
   test(IR);
+  test(Parser);
   return 0;
 }

@@ -53,9 +53,85 @@ blindly until we can make a  decision, since the tree structure of the
 expression up to that point is identical. We can find the 'in' keyword
 with LL(1) lookahead.
 
+The trouble with chained comparisons
+------------------------------------
+I want to allow chained comparisons, i.e.  'x < y < z' should evaluate
+as if it was 'x < y and y < z', _not_ as if it was '(x < y) < z'. This
+is  quite problematic  to represant  in  a homogenous  ast, because  I
+specifically  do _not_  want to  evaluate y  twice. We  can, in  other
+words, _not_ encode chained comparisons as
+
+x_1 'op' x_2 'op' ... 'op' x_n ~
+
+            And
+	  /     \
+	 op      \
+	/ \       \
+    x_n-1  x_n    And
+                /     \
+               op     ...
+              / \       \
+	  x_n-2 x_n-1	And
+	  	      /     \
+	             op      op
+                    / \     / \
+                  x_2 x_3 x_1 x_2
+
+because, as we  can see, almost every node appears  in the tree twice!
+When evaluating  or generating  bytecode it would  be _super_  hard to
+avoid evaluating everythin twice. Not only is this inefficient, but if
+the expressions have side-effects, or are random, the results could be
+catastrophically wrong!
+
+The _correct_  solution to this  problem is  most likely to  move away
+from a homogenous tree completely, but because of the nice benefits of
+using one [1] i don't want to do so.
+
+Rather,  i have  opted  for  the following  "hack":  I  am encoding  a
+heterogenous node for the comparisons, by constructing nodes which act
+as metadata, in a homogenous tree.
+
+The ASTComp,  ASTCompOps, and ASTCompOperands ast_class-es  encode the
+same representation of chained comparisons  that is used in the Python
+AST in the following way:
+
+x_1 'op' x_2 'op' ... 'op' x_n ~
+
+          Comp
+	/  |   \
+       /   |    \  
+      /    |     \
+    x_1 CompOps CompOperands
+           |      |
+	  x_2    'op'
+	   |      |
+	  ...    ...
+	   |      |
+	  x_n    'op'
+
+Which han  be evaluated  using the  following algorithm,  or something
+similar:
+
+    result <- true
+    left   <- eval(Comp.left_op)
+    loop i = 0, ...
+      right  <- eval(Comp.operands[i])
+      op     <- Comp.ops[i]
+      result <- op(left, right)
+      if not result: // short circuit
+        break
+      left <- right
+    return result
+    
+Which also short-cicuits correctly.
+
 To-do list
 ----------
 - Update the to-do list more than once
 - Refactor the lexer to return error codes instead of crash
   - Write tests for failing cases that we can now test for
 - Modularize the unit-testing library
+
+Sources
+-------
+[1] Purr, Terance: Language Implementation Patterns
