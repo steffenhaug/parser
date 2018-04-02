@@ -88,6 +88,8 @@ int push_child(ast* node, ast child);
 void set_span_start(ast *root, int line, int column);
 void set_span_end(ast *root, int line, int column);
 
+bool is_string_type(ast_class cls);
+
 /*
  * ast_vector management
  * =====================

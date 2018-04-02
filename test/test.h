@@ -67,6 +67,7 @@ https://mort.coffee/home/obscure-c-features/
 	   GRN "Success:" RESET,					\
 	   description, __FILE__, suite_name);				\
   test_end:								\
+    free(message);								\
     total++;								\
   } while (0);
 

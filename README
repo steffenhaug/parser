@@ -7,17 +7,14 @@ scratch,  in C,  using  no  tools or  libraries  save  the C  standard
 library,  GCC, Make,  and a  text  editor.  Hand-writing  a lexer  and
 parser is the first step of many.
 
-The  parser needs  to  be  at least  LL(k),  because anything  simpler
-struggles   to  recognize   grammars  with   infix-operators.  It   is
-(relatively) easy to make grammars  LL(k), so a backtracking parser is
-overkill. (It's not like I'm writing a C++ parser :-)) It is plausible
-that  a predicated  parser is necessary, 
+The parser needs to be at least (capable of) LL(k). The grammar itself
+is probably going to be LL(1), (It's not like I'm writing a C++ parser
+:-) and a backtracking parser is overkill.
 
 The trouble with 'let'
 ----------------------
 If we  want to  be certain of  exactly what we  are parsing  before we
-start  munching   tokens,  we   need  arbitrary  lookahead   to  parse
-let-blocks
+start munching tokens, we need arbitrary lookahead to parse let-blocks
 
     // let for symbol definitions.
     let a = ... ,
@@ -133,7 +130,9 @@ To-do list
      [ ] Write tests for failing cases that we can now test for
 [ ] Modularize the unit-testing library
 [ ] NIL type and implicit else NIL. after if.
-[ ] Tuples as lingua franca for multiple assignment.
+[ ] scan() needs to take a pointer to a lexeme and modify it,
+    instead of returning one. Further, scan() needs to free
+    the old lexeme if it is allocated.
 
 Sources
 -------

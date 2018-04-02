@@ -100,11 +100,9 @@ lexeme_class id_or_keyword(const char *contents) {
   check("use", LexUse);
   check("as", LexAs);
   check("let", LexLet);
-  check("in", LexIn);
   check("if", LexIf);
   check("else", LexElse);
-  check("switch", LexSwitch);
-  check("default", LexDefault);
+  check("where", LexWhere);
   check("cases", LexCases);
   check("otherwise", LexOtherwise);
   check("not", LexNot);
@@ -206,6 +204,8 @@ lexeme *scan(stream *input) {
   switch (last_munched) {
   case '.':
     goto seen_two_dots;
+  case '\n':
+    yield(LexStatementTerminator);
   default:
     spit;
     yield(LexDot);
@@ -546,11 +546,9 @@ const char* lexeme_class_tostr(lexeme_class c) {
   check(LexUse);
   check(LexAs);
   check(LexLet);
-  check(LexIn);
+  check(LexWhere);
   check(LexIf);
   check(LexElse);
-  check(LexSwitch);
-  check(LexDefault);
   check(LexCases);
   check(LexOtherwise);
   check(LexCaret);
@@ -560,6 +558,7 @@ const char* lexeme_class_tostr(lexeme_class c) {
   check(LexTrue);
   check(LexFalse);
   check(LexNot);
+  check(LexStatementTerminator);
   }
 }
 #undef check

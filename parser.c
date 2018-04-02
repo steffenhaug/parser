@@ -28,7 +28,7 @@ int parse_statement(parser *p, ast *stmt) {
   int error_code = 0;
   // assume, for now, the statement is a simple expression
   parse_expression(p, stmt);
-  match(p, LexDot);
+  match(p, LexStatementTerminator);
   return error_code;
 }
 
@@ -451,6 +451,13 @@ int init_parser(parser *p, stream *s) {
   return 0;
 }
 
+int free_parser(parser *p) {
+  if (NULL == p)
+    return 1;
+  for (int i = 0; i < MAX_LOOKAHEAD; i++)
+    free_lexeme(p->lookahead[i]);
+}
+
 lexeme *LA(parser *p, size_t i) {
   return p->lookahead[i + p->position];
 }
@@ -461,27 +468,30 @@ lexeme_class LT(parser *p, size_t i) {
 
 int match(parser *p, lexeme_class cls) {
   // Assert that the current lexeme has the right type
+  int error_code = 0;
   if (LT(p, 0) != cls) {
     parser_error("Failed to match %s, found %s. (line: %d, column: %d)",
 		 lexeme_class_tostr(cls),
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);
-    return MATCH_FAILED;
+    error_code = MATCH_FAILED;
   }
 
   advance(p);
-  return 0;
+  return error_code;
 }
 
 int match_store_value(parser *p, lexeme_class cls, ast *node) {
+  int error_code = 0;
+
   if (LT(p, 0) != cls) {
     parser_error("Failed to match %s, found %s. (line: %d, column: %d)",
 		 lexeme_class_tostr(cls),
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);
-    return MATCH_FAILED;
+    error_code = MATCH_FAILED;
   }
 
   switch (cls) {
@@ -534,5 +544,5 @@ int match_store_value(parser *p, lexeme_class cls, ast *node) {
   }
 
   advance(p);
-  return 0;
+  return error_code;
 }

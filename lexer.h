@@ -237,15 +237,14 @@ typedef enum {
   LexUse,
   LexAs,
   LexLet,
-  LexIn,
+  LexWhere,
   LexIf,
   LexElse,
-  LexSwitch,
-  LexDefault,
   LexCases,
   LexOtherwise,
-  // EOF
-  LexEndOfFile,
+  // Special weird stuff
+  LexEndOfFile,           // EOF
+  LexStatementTerminator, // ".\n"
 } lexeme_class;
 
 typedef struct {

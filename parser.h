@@ -56,6 +56,7 @@ int parse_expression(parser *p, ast *expr);
 
 
 int init_parser(parser *p, stream *s);
+int free_parser(parser *p);
 int advance(parser *p);
 
 /* Lookahead functions

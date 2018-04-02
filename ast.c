@@ -16,6 +16,8 @@ void init_ast(ast *node, ast_class cls) {
 
 int free_ast(ast *node) {
   int error_code = free_ast_vector(&node->children);
+  if (is_string_type(node->type))
+    free(node->value.s);
   return error_code;
 }
 
@@ -191,4 +193,10 @@ void print_sexpr(ast *tree) {
       print_sexpr(&tree->children.data[i]);
     printf("\b) ");
   }
+}
+
+bool is_string_type(ast_class cls) {
+  return
+    cls == ASTString ||
+    cls == ASTIdentifier;
 }

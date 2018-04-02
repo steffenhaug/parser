@@ -61,6 +61,7 @@ suite(Stream, {
 	assert(sgetc(s) == 'i');
 	assert(sgetc(s) == 'e');
 	assert(s->stackp == 0);
+	sclose(s);
     });
     
     // this unit possibly tests too many things...
@@ -96,6 +97,7 @@ suite(Stream, {
 	
 	// last character should be EOF,
 	assert(sgetc(s) == EOF);
+	sclose(s);
     });
 
     unit("column and line does not move past EOF", {
@@ -145,26 +147,32 @@ suite(Lexer, {
 	assert(l->line == 1);
 	assert(l->column == 1);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->line == 1);
 	assert(l->column == 3);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->line == 1);
 	assert(l->column == 5);
 	
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->line == 1);
 	assert(l->column == 8);
 
 	// EOF lexeme have "its own" column
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->line == 1);
 	assert(l->column == 10);
 	assert(l->type == LexEndOfFile);
 
 	// try to advance past EOF
+	free_lexeme(l);
 	l = scan(s);
+	free_lexeme(l);
 	l = scan(s);
 
 	// all EOF lexemes, naturally, should
@@ -185,14 +193,17 @@ suite(Lexer, {
 	assert(l->type == LexDecInteger);
 	assert(strcmp(l->content, "0") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexDecInteger);
 	assert(strcmp(l->content, "1") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexDecInteger);
 	assert(strcmp(l->content, "666") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexEndOfFile);
 
@@ -208,14 +219,17 @@ suite(Lexer, {
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "0.43") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "0.0") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "5.23") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexEndOfFile);
 	
@@ -231,22 +245,27 @@ suite(Lexer, {
 	assert(l->type == LexHexInteger);
 	assert(strcmp(l->content, "0x0") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexHexInteger);
 	assert(strcmp(l->content, "0xABCDEF") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexHexInteger);
 	assert(strcmp(l->content, "0X12") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexBinInteger);
 	assert(strcmp(l->content, "0b101") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexBinInteger);
 	assert(strcmp(l->content, "0B01110") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexEndOfFile);
 	
@@ -262,25 +281,31 @@ suite(Lexer, {
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e1") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1.2e2") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e-2") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e0") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexFloat);
 	assert(strcmp(l->content, "1e5") == 0);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexDot);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexEndOfFile);
 
@@ -295,42 +320,77 @@ suite(Lexer, {
 
 	l = scan(s);
 	assert(l->type == LexPlus);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexMinus);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexAsterisk);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexSlash);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexDot);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexEllipsis);
+	
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexEquals);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexDoubleEquals);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexNotEqual);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexLessThan);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexGreaterThan);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexLessOrEq);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexGreaterOrEq);
+
 	// line break
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexColon);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexSemicolon);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexComma);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexRightArrow);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexLeftArrow);
 
+	free_lexeme(l);
 
 	l = scan(s);
 	assert(l->type == LexEndOfFile);
@@ -345,21 +405,32 @@ suite(Lexer, {
 
 	l = scan(s);
 	assert(l->type == LexLeftParenthesis);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexRightParenthesis);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexLeftCurlyBrace);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexRightCurlyBrace);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexLeftSquareBracket);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexRightSquareBracket);
 
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexLessThan);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexGreaterThan);
 
@@ -380,6 +451,8 @@ suite(Lexer, {
 
 	l = scan(s);
 	assert(l->type == LexRightArrow);
+
+	free_lexeme(l);
 	l = scan(s);
 	assert(l->type == LexRightArrow);
 
@@ -392,8 +465,8 @@ suite(Lexer, {
 	lexeme *l;
 
 	verify("foobar", LexString);
+	free_lexeme(l);
 	verify("loodar", LexString);
-	
 	free_lexeme(l);
 	sclose(s);
     });
@@ -403,8 +476,24 @@ suite(Lexer, {
 	lexeme *l;
 
 	verify("foobar", LexIdentifier);
+	free_lexeme(l);
 	verify("foo123", LexIdentifier);
+	free_lexeme(l);
 	verify("loodar?", LexIdentifier);
+	free_lexeme(l);
+	sclose(s);
+    });
+
+    unit("lex statement terminator", {
+	stream *s = stream_fromstr(". .\n");
+	lexeme *l;
+
+	l = scan(s);
+	assert(l->type == LexDot);
+
+	free_lexeme(l);
+	l = scan(s);
+	assert(l->type == LexStatementTerminator);
 
 	free_lexeme(l);
 	sclose(s);
@@ -412,30 +501,43 @@ suite(Lexer, {
 
     unit("lex keywords", {
 	stream *s = stream_fromstr("mod div func fn use as "
-				   "let in if else switch default "
+				   "let where if else "
 				   "cases otherwise and or xor true false ");
 	lexeme *l;
 
 	verify("mod", LexMod);
+	free_lexeme(l);
 	verify("div", LexDiv);
+	free_lexeme(l);
 	verify("func", LexFunc);
+	free_lexeme(l);
 	verify("fn", LexFn);
+	free_lexeme(l);
 	verify("use", LexUse);
+	free_lexeme(l);
 	verify("as", LexAs);
+	free_lexeme(l);
 	verify("let", LexLet);
-	verify("in", LexIn);
+	free_lexeme(l);
+	verify("where", LexWhere);
+	free_lexeme(l);
 	verify("if", LexIf);
+	free_lexeme(l);
 	verify("else", LexElse);
-	verify("switch", LexSwitch);
-	verify("default", LexDefault);
+	free_lexeme(l);
 	verify("cases", LexCases);
+	free_lexeme(l);
 	verify("otherwise", LexOtherwise);
+	free_lexeme(l);
 	verify("and", LexAnd);
+	free_lexeme(l);
 	verify("or", LexOr);
+	free_lexeme(l);
 	verify("xor", LexXor);
+	free_lexeme(l);
 	verify("true", LexTrue);
+	free_lexeme(l);
 	verify("false", LexFalse);
-
 	free_lexeme(l);
 	sclose(s);
     });
@@ -490,6 +592,7 @@ suite(Parser, {
 
 	match(&p, LexEndOfFile);
   
+	free_parser(&p);
 	sclose(s);
     });
 
@@ -515,6 +618,7 @@ suite(Parser, {
 	assert(root.span.start_column ==
 	       root.span.end_column == 1);
 
+	free_parser(&p);
 	sclose(s);
     });
 
@@ -533,44 +637,54 @@ suite(Parser, {
 	assert(atom.value.i == 5);
 
 	// 0xFF
+	free_ast(&atom);
 	error_code = parse_atom(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTInteger);
 	assert(atom.value.i == 255);
 
 	// 0b10
+	free_ast(&atom);
 	error_code = parse_atom(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTInteger);
 	assert(atom.value.i == 2);
 
 	// 0.42
+	free_ast(&atom);
 	error_code = parse_atom(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTFloat);
 	assert(atom.value.d == 0.42);
 
 	// "f o o b a r"
+	free_ast(&atom);
 	error_code = parse_atom(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTString);
 	assert(strcmp(atom.value.s, "f o o b a r") == 0);
 
 	// x (identifier)
+	free_ast(&atom);
 	error_code = parse_atom(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTIdentifier);
 	assert(strcmp(atom.value.s, "x") == 0);
 
+	free_ast(&atom);
 	error_code = parse_atom(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTBool);
 	assert(atom.value.b == true);
 
+	free_ast(&atom);
 	error_code = parse_atom(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTBool);
 	assert(atom.value.b == false);
+
+	free_ast(&atom);
+	free_parser(&p);
 	sclose(s);
     });
 
@@ -587,19 +701,24 @@ suite(Parser, {
 	assert(atom.type == ASTFloat);
 	assert(atom.value.d == 2.3);
 
+	free_ast(&atom);
 	error_code = parse_primary_expr(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTFloat);
 	assert(atom.value.d == atof("4.5e6"));
 
+	free_ast(&atom);
 	error_code = parse_primary_expr(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTCall);
 
+	free_ast(&atom);
 	error_code = parse_primary_expr(&p, &atom);
 	assert(!error_code);
 	assert(atom.type == ASTSubscript);
 
+	free_parser(&p);
+	free_ast(&atom);
 	sclose(s);
     });
 
@@ -617,15 +736,20 @@ suite(Parser, {
 
 	// notice! negative integers are lexed as integers,
 	// so "-5" is not a unary expression.
+	free_ast(&n);
 	error_code = parse_factor(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTUnaryMinus); // !!!
 	assert(n.value.i = -5);
 
+	free_ast(&n);
 	error_code = parse_factor(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTPow); // !!!
 	assert(n.value.i = -5);
+
+	free_parser(&p);
+	free_ast(&n);
 	sclose(s);
     });
 
@@ -641,13 +765,18 @@ suite(Parser, {
 	assert(!error_code);
 	assert(n.type == ASTPow);
 
+	free_ast(&n);
 	error_code = parse_power(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTPow);
 
+	free_ast(&n);
 	error_code = parse_power(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTPow);
+
+	free_parser(&p);
+	free_ast(&n);
 	sclose(s);
     });
 
@@ -659,19 +788,24 @@ suite(Parser, {
 	ast n;
 	int error_code = 0;
 
+	free_ast(&n);
 	error_code = parse_term(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTMul);
 
+	free_ast(&n);
 	error_code = parse_term(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTDiv);
 
+	free_ast(&n);
 	error_code = parse_term(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTMod);
-	sclose(s);
 
+	free_parser(&p);
+	free_ast(&n);
+	sclose(s);
     });
 
     unit("parse arithmetic", {
@@ -689,6 +823,9 @@ suite(Parser, {
 	assert(tree.children.data[0].type == ASTPlus);
 	assert(tree.children.data[0].children.data[1].type == ASTMul);
 	assert(tree.children.data[1].type == ASTMod);
+
+	free_parser(&p);
+	free_ast(&tree);
 	sclose(s);
     });
 
@@ -714,6 +851,7 @@ suite(Parser, {
 	assert(tree.children.data[1].children.data[0].type == ASTLess);
 	assert(tree.children.data[2].children.data[0].type == ASTIdentifier);
 
+	free_ast(&tree);
 	error_code = parse_comp_expr(&p, &tree);
 	assert(!error_code);
 
@@ -723,6 +861,9 @@ suite(Parser, {
 
 	assert(tree.children.data[1].children.length == 2);
 	assert(tree.children.data[2].children.length == 2);
+
+	free_parser(&p);
+	free_ast(&tree);
 	sclose(s);
     });
 
@@ -738,17 +879,22 @@ suite(Parser, {
 	assert(!error_code);
 	assert(tree.type == ASTBool);
 
+	free_ast(&tree);
 	error_code = parse_not_expr(&p, &tree);
 	assert(!error_code);
 	assert(tree.type == ASTNot);
 	assert(tree.children.data[0].type == ASTBool);
 	assert(tree.children.data[0].value.b == true);
 
+	free_ast(&tree);
 	error_code = parse_not_expr(&p, &tree);
 	assert(!error_code);
 	assert(tree.type == ASTNot);
 	assert(tree.children.data[0].type == ASTBool);
 	assert(tree.children.data[0].value.b == false);
+
+	free_parser(&p);
+	free_ast(&tree);
 	sclose(s);
     });
 
@@ -766,17 +912,22 @@ suite(Parser, {
 	assert(tree.children.data[0].type == ASTIdentifier);
 	assert(tree.children.data[1].type == ASTIdentifier);
 
+	free_ast(&tree);
 	error_code = parse_and_expr(&p, &tree);
 	assert(!error_code);
 	assert(tree.type == ASTAnd);
 	assert(tree.children.data[0].type == ASTNot);
 	assert(tree.children.data[1].type == ASTIdentifier);
 
+	free_ast(&tree);
 	error_code = parse_and_expr(&p, &tree);
 	assert(!error_code);
 	assert(tree.type == ASTAnd);
 	assert(tree.children.data[0].type == ASTIdentifier);
 	assert(tree.children.data[1].type == ASTNot);
+
+	free_parser(&p);
+	free_ast(&tree);
 	sclose(s);
     });
 
@@ -791,12 +942,17 @@ suite(Parser, {
 	error_code = parse_or_expr(&p, &tree);
 	assert(!error_code);
 
+	free_ast(&tree);
 	error_code = parse_or_expr(&p, &tree);
+
+	free_parser(&p);
+	free_ast(&tree);
 	assert(!error_code);
+	sclose(s);
     });
     
     unit("autoconstructing ast from '5 + 10.'", {
-	stream *s = stream_fromstr("5 + 10.");
+	stream *s = stream_fromstr("5 + 10.\n");
 	parser p;
 	init_parser(&p, s);
 
@@ -807,6 +963,9 @@ suite(Parser, {
 	assert(root.children.data[0].type == ASTPlus);
 	assert(root.children.data[0].children.data[0].type == ASTInteger);
 	assert(root.children.data[0].children.data[1].type == ASTInteger);
+
+	free_parser(&p);
+	free_ast(&root);
 	sclose(s);
     });
 
@@ -838,6 +997,9 @@ suite(Parser, {
 	assert(tree.children.data[1].type == ASTIdentifier);
 	assert(tree.children.data[2].type == ASTIdentifier);
 	assert(tree.children.length == 3);
+
+	free_parser(&p);
+	free_ast(&tree);
 	sclose(s);
     });
 
@@ -857,6 +1019,9 @@ suite(Parser, {
 	error_code = parse_expression_list(&p, &tree);
 	assert(!error_code);
 	assert(tree.children.length == 3);
+
+	free_parser(&p);
+	free_ast(&tree);
 	sclose(s);
     });
 })
@@ -895,7 +1060,7 @@ suite(IR, {
 	assert(root.children.length = 1);
 	assert(root.children.data[0].children.length = 2);
 
-	free_ast(&root);
+	free_ast(&root); // should free five and ten recursively
     });
 
 })
