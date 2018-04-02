@@ -223,8 +223,6 @@ lexeme *scan(stream *input) {
  seen_minus:
   munch;
   switch (last_munched) {
-  case NONZERO_DIGIT:
-    goto seen_digit;
   case '>':
     yield(LexRightArrow);
   default:
@@ -574,4 +572,12 @@ bool is_comparison(lexeme_class cls) {
     cls == LexGreaterOrEq ||
     cls == LexNotEqual ||
     cls == LexDoubleEquals;
+}
+
+bool is_closing_bracket(lexeme_class cls) {
+  return
+    cls == LexRightParenthesis ||
+    cls == LexRightSquareBracket ||
+    cls == LexRightCurlyBrace ||
+    cls == LexGreaterThan;
 }

@@ -571,10 +571,11 @@ suite(Parser, {
 	assert(!error_code);
 	assert(atom.type == ASTBool);
 	assert(atom.value.b == false);
+	sclose(s);
     });
 
     unit("parse primary expr", {
-	stream *s = stream_fromstr("2.3 4.5e6");
+	stream *s = stream_fromstr("2.3 4.5e6 f(x) A[1]");
 	parser p;
 	init_parser(&p, s);
 	
@@ -591,11 +592,15 @@ suite(Parser, {
 	assert(atom.type == ASTFloat);
 	assert(atom.value.d == atof("4.5e6"));
 
+	error_code = parse_primary_expr(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTCall);
 
-	printf("remember: atof(\"4.5e6.7\") = %.3f, so the elxer needs a change\n",
-	       atom.value.d);
-	printf("remember to test function and subscript "
-	       "primary expressions as well.\n");
+	error_code = parse_primary_expr(&p, &atom);
+	assert(!error_code);
+	assert(atom.type == ASTSubscript);
+
+	sclose(s);
     });
 
     unit("parse factors", {
@@ -614,13 +619,14 @@ suite(Parser, {
 	// so "-5" is not a unary expression.
 	error_code = parse_factor(&p, &n);
 	assert(!error_code);
-	assert(n.type == ASTInteger); // !!!
+	assert(n.type == ASTUnaryMinus); // !!!
 	assert(n.value.i = -5);
 
 	error_code = parse_factor(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTPow); // !!!
 	assert(n.value.i = -5);
+	sclose(s);
     });
 
     unit("parse power expressions", {
@@ -642,6 +648,7 @@ suite(Parser, {
 	error_code = parse_power(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTPow);
+	sclose(s);
     });
 
     unit("parse terms", {
@@ -663,6 +670,7 @@ suite(Parser, {
 	error_code = parse_term(&p, &n);
 	assert(!error_code);
 	assert(n.type == ASTMod);
+	sclose(s);
 
     });
 
@@ -681,6 +689,7 @@ suite(Parser, {
 	assert(tree.children.data[0].type == ASTPlus);
 	assert(tree.children.data[0].children.data[1].type == ASTMul);
 	assert(tree.children.data[1].type == ASTMod);
+	sclose(s);
     });
 
     unit("parse comparisons", {
@@ -714,6 +723,7 @@ suite(Parser, {
 
 	assert(tree.children.data[1].children.length == 2);
 	assert(tree.children.data[2].children.length == 2);
+	sclose(s);
     });
 
     unit("parse not statements", {
@@ -739,6 +749,7 @@ suite(Parser, {
 	assert(tree.type == ASTNot);
 	assert(tree.children.data[0].type == ASTBool);
 	assert(tree.children.data[0].value.b == false);
+	sclose(s);
     });
 
     unit("parse and expressions", {
@@ -766,6 +777,7 @@ suite(Parser, {
 	assert(tree.type == ASTAnd);
 	assert(tree.children.data[0].type == ASTIdentifier);
 	assert(tree.children.data[1].type == ASTNot);
+	sclose(s);
     });
 
     unit("parse or (and xor) exprs", {
@@ -795,11 +807,61 @@ suite(Parser, {
 	assert(root.children.data[0].type == ASTPlus);
 	assert(root.children.data[0].children.data[0].type == ASTInteger);
 	assert(root.children.data[0].children.data[1].type == ASTInteger);
+	sclose(s);
+    });
+
+    unit("parse identifier list", {
+	stream *s = stream_fromstr("x, y, z     x, y, z,) // !!\n");
+	parser p;
+	init_parser(&p, s);
+
+	ast tree;
+	int error_code = 0;
+
+	// You need to initialize the list yourself
+	// you can however initialize it aas whatever,
+	// all it does is push a lot of children
+	init_ast(&tree, ASTRoot);
+	
+	error_code = parse_identifier_list(&p, &tree);
+	assert(!error_code);
+	assert(tree.children.data[0].type == ASTIdentifier);
+	assert(tree.children.data[1].type == ASTIdentifier);
+	assert(tree.children.data[2].type == ASTIdentifier);
+	assert(tree.children.length == 3);
+
+	free_ast(&tree);
+	init_ast(&tree, ASTRoot);
+	error_code = parse_identifier_list(&p, &tree);
+	assert(!error_code);
+	assert(tree.children.data[0].type == ASTIdentifier);
+	assert(tree.children.data[1].type == ASTIdentifier);
+	assert(tree.children.data[2].type == ASTIdentifier);
+	assert(tree.children.length == 3);
+	sclose(s);
+    });
+
+    unit("parse expression list", {
+	stream *s = stream_fromstr("x + y, a < b < c, n mod m \n");
+	parser p;
+	init_parser(&p, s);
+
+	ast tree;
+	int error_code = 0;
+
+	// You need to initialize the list yourself
+	// you can however initialize it aas whatever,
+	// all it does is push a lot of children
+	init_ast(&tree, ASTRoot);
+	
+	error_code = parse_expression_list(&p, &tree);
+	assert(!error_code);
+	assert(tree.children.length == 3);
+	sclose(s);
     });
 })
 
 suite(IR, {
-
     unit("initializing a root node", {
 	ast root;
 	init_ast(&root, ASTRoot);

@@ -32,41 +32,30 @@ typedef struct {
 } parser;
 
 
-/*
- * Parsing functions
- * =================
- */
 int parse_root(parser *p, ast *root);
 int parse_statement(parser *p, ast *stmt);
 
-int parse_par_expr(parser *p, ast *expr);
+int parse_identifier_list(parser *p, ast *node);
+int parse_expression_list(parser *p, ast *node);
 
+int parse_par_expr(parser *p, ast *expr);
 int parse_atom(parser *p, ast *atom);
 int parse_call(parser *p, ast *call);
 int parse_subscript(parser *p, ast *subsc);
-
 int parse_primary_expr(parser *p, ast *expr);
-
-// operator expressions
-
-// mathematical
 int parse_power(parser *p, ast *expr);
 int parse_factor(parser *p, ast *expr);
 int parse_term(parser *p, ast *expr);
 int parse_arith_expr(parser *p, ast *expr);
-
-
-// boolean
 int parse_comp_expr(parser *p, ast *expr);
 int parse_not_expr(parser *p, ast *expr);
 int parse_and_expr(parser *p, ast *expr);
 int parse_or_expr(parser *p, ast *expr);
-
 int parse_expression(parser *p, ast *expr);
 
 
-int init_parser(parser *p, stream *s);
 
+int init_parser(parser *p, stream *s);
 int advance(parser *p);
 
 /* Lookahead functions

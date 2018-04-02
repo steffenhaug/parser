@@ -26,10 +26,6 @@ exprlist
     : expression (',' expression)*
     ;
 
-symbdef
-    : 'def' symblist '=' expression '.'
-    ;
-
 funcdef
     : 'func' ID '(' [symblist] ')' ':' expression '.'
     ;
@@ -55,9 +51,12 @@ atom
     ;
 
 primary
-    : atom
-    | subscript !!!
-    | call !!!
+    : atom trailer*
+    ;
+
+trailer
+    : '[' exprlist ']'
+    | '(' exprlist ')'
     ;
 
 power

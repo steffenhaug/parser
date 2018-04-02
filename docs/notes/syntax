@@ -1,0 +1,198 @@
+
+
+
+Maybe an imperative language would be simpler, as it maps
+more easily to machine code.
+
+func f(x, y) {
+  do_something.
+  do_something_else.
+  return something.
+}
+
+cases on statement form
+
+func f(x) {
+  cases
+    x == 0: {
+      do_something.
+      do_something_else.
+    }
+    x == 1:
+      do_just_one_thing.
+  otherwise {
+    do_some_stuff.
+    do_some_stuff.
+  }
+}
+
+func fib(x) {
+  cases
+    x == 0: return 1.
+    x == 1: return 1.
+  otherwise
+    return fib(x - 1) + fib(x - 2).
+}
+
+If we do this,  then sets can't keep thir syntax without needing
+arbitarry lookahead. This is pretty shit. Another notation could
+be
+
+func fib(x)
+  cases
+    x == 0: return 1.
+    x == 1: return 1.
+  otherwise
+    return fib(x - 1) + fib(x - 2).
+end
+
+or we can borrow do-blocks from lisp
+
+do:
+  something.
+  something.
+  something.
+end
+
+func it_alg(x) do:
+  something.
+  something.
+  somethind.
+end.
+
+
+which is more functional-style. this, along with other lisp-semantics,
+are actually really nice.
+
+func print_fibs(limit)
+  let a = 1,
+      b = 1,
+  in loop:
+    if (a > limit) break.
+    print(a).
+    a, b = b, a + b.
+  end.
+
+(func print_fibs [limit]
+  (do
+    (let ((a 1) (b 2))
+      (loop
+        (if (> a limit) return)
+	(write a)
+	(setq ((a b) (b (+ a b))))))))
+
+
+
+
+here i have also removed the colon after the function header:
+
+func square(x) x^2.
+
+this is fine.
+
+Another option is for functions to be implicit do-blocks, and
+keep the colon. The colon will mean "here come dat block", i.e.
+you can put many expressions in a row after it.
+
+func imperative_algorithm(I):
+  here().
+  come().
+  dat().
+  bloc().
+end
+
+
+do:
+  let x = y.
+  let z = w.
+  return f(x, z).
+end
+
+
+perhaps 'where' could be a trailer, like (...) and [...]
+
+
+return sqrt(a) where
+  a = x^2 + y^2.
+
+
+func pyth(x, y):
+  return sqrt(xy) where
+    xy = x^2 + y^2.
+end
+
+
+
+let S = set {1, 3, 5}.
+
+let H = map {
+  "cow" -> "moo",
+  "cat" -> "meow",
+  "dog" -> "i have rabies boss",
+}.
+
+let V = [1, 2, 3].
+
+let I = matrix [
+  1 0 0 ;
+  0 1 0 ;
+  0 0 1	;
+].
+
+
+do {
+  ... .
+  ... .
+  ... .
+  yield ... .
+}
+
+// records may be syntax for data classes
+record student {
+  first_name,
+  last_name,
+  field,
+}.
+
+let steffen = student("steffen", "haug", "mathematics").
+
+let sn = steffen.name // !! if this is the operator, then the statement
+       	 	      // terminator must be '.\n'!
+
+
+return [expression (',' expression)*] return from blocks
+
+
+if we make special syntax to create hashmaps and sets we can use this,
+which is pretty good.
+
+func print_fibs(limit) {
+  let a = 1.
+  let b = 1.
+  loop {
+    if a > limit {
+      break.
+    }
+    print(a).
+    a, b = b, a + b.
+  }
+}
+
+
+
+
+func norm(V) {
+  return sqrt(a) where
+    a = dot(V, V).
+}
+
+func quicksort(V) {
+  cases
+    length(V) == 0: return V.
+    length(V) == 1: return V.
+  otherwise
+    return (lower + [v] + higher) where
+      v, vs   = uncons(V),
+      lower   = filter(fn x: x < v, vs),
+      higher  = filter(fn x: x >= v, vs).
+}

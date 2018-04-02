@@ -32,12 +32,48 @@ int parse_statement(parser *p, ast *stmt) {
   return error_code;
 }
 
+int parse_identifier_list(parser *p, ast *node) {
+  // This function ASSUMES THE NODE IS INITIALIZED!
+  // This is pretty obvious, since the only things
+  // that need identifier lists are function
+  // definitions and things like that, which already
+  // have stuff in it.
+  // We don't initialize the node here, because we don't
+  // want to reset it! So don't pass an unitiialized node.
+  int error_code = 0;
+  ast tmp;
+  while (!error_code) {
+    init_ast(&tmp, ASTIdentifier);
+    error_code = match_store_value(p, LexIdentifier, &tmp);
+    push_child(node, tmp);
+    if (LT(p, 0) != LexComma)
+      break;
+    match(p, LexComma);
+    if (is_closing_bracket(LT(p, 0)))
+      break;
+  }
+  return error_code;
+}
+
+int parse_expression_list(parser *p, ast *node) {
+  int error_code = 0;
+  ast tmp;
+  while (!error_code) {
+    parse_expression(p, &tmp);
+    push_child(node, tmp);
+    if (LT(p, 0) != LexComma)
+      break;
+    match(p, LexComma);
+    if (is_closing_bracket(LT(p, 0)))
+      break;
+  }
+  return error_code;
+}
+
 /*
  * Operator Expressions
  * ====================
  */
-
-
 
 int parse_par_expr(parser *p, ast *expr) {
   int error_code = 0;
@@ -105,15 +141,27 @@ int parse_subscript(parser *p, ast *subsc) {
 
 int parse_primary_expr(parser *p, ast *expr) {
   int error_code = 0;
-  switch (LT(p, 1)) {
+  ast tmp;
+  error_code = parse_atom(p, &tmp);
+  // Parse "trailing bit" ([...] or (...)) if there is one
+  switch (LT(p, 0)) {
   case LexLeftParenthesis:
-    error_code = parse_call(p, expr);
+    match(p, LexLeftParenthesis);
+    init_ast(expr, ASTCall);
+    push_child(expr, tmp);
+    parse_expression_list(p, expr);
+    match(p, LexRightParenthesis);
     break;
   case LexLeftSquareBracket:
-    error_code = parse_subscript(p, expr);
+    match(p, LexLeftSquareBracket);
+    init_ast(expr, ASTSubscript);
+    push_child(expr, tmp);
+    parse_expression_list(p, expr);
+    match(p, LexRightSquareBracket);
     break;
   default:
-    error_code = parse_atom(p, expr);
+    *expr = tmp;
+    break;
   }
   return error_code;
 }
@@ -333,7 +381,7 @@ int parse_or_expr(parser *p, ast *expr) {
   int error_code = 0;
 
   ast left, right, tmp;
-  error_code = parse_not_expr(p, &left);
+  error_code = parse_and_expr(p, &left);
 
   while (!error_code) {
     switch (LT(p, 0)) {
@@ -348,7 +396,7 @@ int parse_or_expr(parser *p, ast *expr) {
     default:
       goto exit_loop;
     }
-    error_code = parse_not_expr(p, &right);
+    error_code = parse_and_expr(p, &right);
     push_child(&tmp, left);
     push_child(&tmp, right);
     left = tmp;

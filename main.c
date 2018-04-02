@@ -11,24 +11,27 @@ void test_parse_str(const char* str) {
   parser p;
   init_parser(&p, s);
 
-  if (1) // Print lookahead buffer.
-    for (int i = 0; i < MAX_LOOKAHEAD; i++) {
-      lexeme *a = p.lookahead[i];
-      printf("(lexeme) %-20s %10s (line %2d, column %2d)\n",
-	     lexeme_class_tostr(a->type), a->content, a->line, a->column);
-    }
+  ast tree;
+  parse_root(&p, &tree);
 
-  printf("%s\n", LA(&p, 0)->content);
-  match(&p, LexDecInteger);
-  match(&p, LexPlus);
-  match(&p, LexDecInteger);
-  match(&p, LexAsterisk);
-  match(&p, LexIdentifier);
-  match(&p, LexCaret);
+  printf("%s ~>\n", str);
+  print_sexpr(&tree);
+  printf("\n");
+  
   
   sclose(s);
 }
 
 int main(int arc, const char *argv[]) {
+  printf("-- Parsing Some Sample Statements -- \n");
+  test_parse_str("1 + -x / 6^-y.");
+  test_parse_str("1 - 5.");
+  test_parse_str("true and not false xor true.");
+  test_parse_str("x < y.");
+  test_parse_str("x < y < z < w.");
+  test_parse_str("x < y < z and not w.");
+  test_parse_str("f(x, y).");
+  test_parse_str("A[i, j].");
+  test_parse_str("g(H[i, j], x mod n).");
   return 0;
 }

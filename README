@@ -125,12 +125,15 @@ similar:
     
 Which also short-cicuits correctly.
 
+
 To-do list
 ----------
-- Update the to-do list more than once
-- Refactor the lexer to return error codes instead of crash
-  - Write tests for failing cases that we can now test for
-- Modularize the unit-testing library
+[ ] Update the to-do list more than once
+[ ] Refactor the lexer to return error codes instead of crash
+     [ ] Write tests for failing cases that we can now test for
+[ ] Modularize the unit-testing library
+[ ] NIL type and implicit else NIL. after if.
+[ ] Tuples as lingua franca for multiple assignment.
 
 Sources
 -------

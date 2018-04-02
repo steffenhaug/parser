@@ -268,3 +268,4 @@ lexeme *scan(stream *s);
 
 const char* lexeme_class_tostr(lexeme_class c);
 bool is_comparison(lexeme_class cls);
+bool is_closing_bracket(lexeme_class cls);

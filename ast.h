@@ -38,6 +38,9 @@ typedef enum {
   ASTXor,
   ASTOr,
   ASTNot,
+  /*  */
+  ASTCall,
+  ASTSubscript,
 } ast_class;
 
 typedef struct {
@@ -113,4 +116,8 @@ int grow_ast_vector(ast_vector *nodes);
 int fit_ast_vector(ast_vector *nodes);
 /* Shrinks the allocated memory to the current size, for
  * more compact storage.
+ */
+
+void print_sexpr(ast *tree);
+/* Prints an s-expression-like representation of the AST.
  */

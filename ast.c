@@ -102,3 +102,93 @@ int fit_ast_vector(ast_vector *nodes) {
     return 1;
   }
 }
+
+
+/* 
+ * Printing
+ * ======== */
+
+#define becomes(sym, str) case sym: return str; break;
+char *ast_class_tostr(ast_class cls) {
+  switch (cls) {
+    becomes(ASTPlus, "+");
+    becomes(ASTMinus, "-");
+    becomes(ASTUnaryMinus, "-");
+    becomes(ASTMul, "*");
+    becomes(ASTDiv, "/");
+    becomes(ASTPow, "^");
+    becomes(ASTMod, "mod");
+
+    becomes(ASTAnd, "and");
+    becomes(ASTXor, "xor");
+    becomes(ASTOr, "or");
+    becomes(ASTNot, "not");
+    becomes(ASTComp, "cmp");
+
+    becomes(ASTCall, "call");
+    becomes(ASTSubscript, "subscript");
+  default:
+    return "<cannot represent>";
+  }
+}
+#undef becomes
+
+void print_sexpr(ast *tree) {
+  switch (tree->type) {
+    /* Root */
+  case ASTRoot:
+    for (int i = 0; i < tree->children.length; i++)
+      print_sexpr(&tree->children.data[i]);
+    printf("\n");
+    break;
+    /* Atoms */
+  case ASTBool:
+    printf("%s ", tree->value.b ? "true" : "false");
+    break;
+  case ASTInteger:
+    printf("%lld ", tree->value.i);
+    break;
+  case ASTFloat:
+    printf("%.2lf ", tree->value.d);
+    break;
+  case ASTString:
+    printf("\"%s\" ", tree->value.s);
+    break;
+  case ASTIdentifier:
+    printf("%s ", tree->value.s);
+    break;
+    /* Comparison Operators */
+  case ASTLess:
+    printf("< ");
+    break;
+  case ASTLessOrEqual:
+    printf("<= ");
+    break;
+  case ASTGreater:
+    printf("> ");
+    break;
+  case ASTGreaterOrEqual:
+    printf(">= ");
+    break;
+  case ASTEquals:
+    printf("== ");
+    break;
+  case ASTNotEqual:
+    printf("!= ");
+    break;
+  case ASTCompOps:
+  case ASTCompOperands:
+    /* Print without ast class  */
+    printf("(");
+    for (int i = 0; i < tree->children.length; i++)
+      print_sexpr(&tree->children.data[i]);
+    printf("\b) ");
+    break;
+  default:
+    /* Print the node as a list with ast class as the first element */
+    printf("(%s ", ast_class_tostr(tree->type));
+    for (int i = 0; i < tree->children.length; i++)
+      print_sexpr(&tree->children.data[i]);
+    printf("\b) ");
+  }
+}
