@@ -94,7 +94,9 @@ char sgetc(stream *s) {
 
 void sputc(char c, stream *s) {
   if (s->stackp > STACK_SIZE) {
-    fprintf(stderr, "stream.c ERROR: sputc-stack is full! (%s)\n", s->fname);
+    fprintf(stderr,
+	    "stream.c ERROR: sputc-stack is full! (%s)\n",
+	    s->fname);
     exit(1);
   }
   else

@@ -156,9 +156,11 @@ record student {
 
 let steffen = student("steffen", "haug", "mathematics").
 
-let sn = steffen.name // !! if this is the operator, then the statement
+let sn = steffen.name. // !! if this is the operator, then the statement
        	 	      // terminator must be '.\n'!
 
+let sn = steffen->name. // this is familiar to people from C, but not
+                       // similar to other languages
 
 return [expression (',' expression)*] return from blocks
 
@@ -195,4 +197,34 @@ func quicksort(V) {
       v, vs   = uncons(V),
       lower   = filter(fn x: x < v, vs),
       higher  = filter(fn x: x >= v, vs).
+}
+
+
+cases {
+  x == a: // one statement
+    something.
+  x == b: { // curly brackets to start a new block with multiple statements
+    something.
+    something_else.
+  }
+  otherwise:
+    somthing.
+}
+
+it should "auto-break" after each case, unlike switch in C.
+since the semantics are slightly different i changed the name.
+
+looping
+=======
+
+for v in V {
+  somthing.
+}
+
+loop {
+  something_forever.
+}
+
+while condition {
+  something_as_long_as_condition_is_true.
 }

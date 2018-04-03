@@ -16,6 +16,11 @@ void test_parse_str(const char* str) {
 
   printf("%s ~>\n", str);
   print_sexpr(&tree);
+  printf("start: %d, %d - end: %d, %d\n",
+	 tree.span.start_line,
+	 tree.span.start_column,
+	 tree.span.end_line,
+	 tree.span.end_column);
   printf("\n");
 
   free_ast(&tree);
@@ -25,14 +30,14 @@ void test_parse_str(const char* str) {
 
 int main(int arc, const char *argv[]) {
   printf("-- Parsing Some Sample Statements -- \n");
-  test_parse_str("1 + -x / 6^-y.\n");
-  test_parse_str("1 - 5.\n");
-  test_parse_str("true and not false xor true.\n");
-  test_parse_str("x < y.\n");
-  test_parse_str("x < y < z < w.\n");
-  test_parse_str("x < y < z and not w.\n");
-  test_parse_str("f(x, y).\n");
-  test_parse_str("A[i, j].\n");
-  test_parse_str("g(H[i, j], x mod n).\n");
+  test_parse_str("1 + -x / 6^-y.\n"
+		 "- 567.\n"
+		 "true and not false xor true.\n"
+		 "x < y.\n"
+		 "x < y < z < w.\n"
+		 "x < y < z and not w.\n"
+		 "f(x, y).\n"
+		 "A[i, j].\n"
+		 "g(H[i, j], x mod n).\n");
   return 0;
 }

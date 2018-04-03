@@ -139,8 +139,16 @@ void print_sexpr(ast *tree) {
   switch (tree->type) {
     /* Root */
   case ASTRoot:
-    for (int i = 0; i < tree->children.length; i++)
+    for (int i = 0; i < tree->children.length; i++) {
       print_sexpr(&tree->children.data[i]);
+      printf(" spans %d, %d to %d, %d\n",
+	     tree->children.data[i].span.start_line,
+	     tree->children.data[i].span.start_column,
+	     tree->children.data[i].span.end_line,
+	     tree->children.data[i].span.end_column);
+      printf("\n");
+
+    }
     printf("\n");
     break;
     /* Atoms */
@@ -191,7 +199,7 @@ void print_sexpr(ast *tree) {
     printf("(%s ", ast_class_tostr(tree->type));
     for (int i = 0; i < tree->children.length; i++)
       print_sexpr(&tree->children.data[i]);
-    printf("\b) ");
+    printf("\b)");
   }
 }
 

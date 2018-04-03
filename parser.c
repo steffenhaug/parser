@@ -26,8 +26,13 @@ int parse_root(parser *p, ast *root) {
 
 int parse_statement(parser *p, ast *stmt) {
   int error_code = 0;
+  int start_line = LA(p, 0)->line;
+  int start_column = LA(p, 0)->column;
+  
   // assume, for now, the statement is a simple expression
   parse_expression(p, stmt);
+  set_span_start(stmt, start_line, start_column);
+  set_span_end(stmt, LA(p, 0)->line, LA(p, 0)->column);
   match(p, LexStatementTerminator);
   return error_code;
 }
