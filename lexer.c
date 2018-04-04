@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "stream.h"
+#include "ringbuffer.h"
 #include "lexer.h"
 
 /* Internal Stack Management
@@ -11,14 +11,9 @@
  * the state machine.
  */
 
-#define munch munched[++stackp] = sgetc(input)
+#define munch bgetch(input, &munched[++stackp])
 /* Pull a new character from the input stream,
  * and push it to the stack.
- */
-
-#define spit sputc(munched[stackp--], input)
-/* Pop a character from the stack, and push it
- * back into the input stream.
  */
 
 #define drop stackp--
@@ -32,7 +27,7 @@
 
 #define reset_munch				\
   stackp = 0;					\
-  munched[stackp] = sgetc(input);		\
+  bgetch(input, &munched[stackp]);		\
   munch_start = input->column;
 /* Executed when the state machine enters the
  * start-state. Prepares the stack for scanning
@@ -53,42 +48,48 @@
 
 #define yield(category)						\
   munched[stackp + 1] = '\0';					\
-  return lexeme(category, munched, input->line, munch_start)
+  init_lexeme(l, category, munched, input->line, munch_start);	\
+  return 0
 
-#define yield_eof						\
-  return lexeme(LexEndOfFile, "eof", input->line, munch_start)
+#define yield_eof							\
+  init_lexeme(l, LexEndOfFile, "eof", input->line, munch_start);	\
+  return 0
 
 /* Lexer Error 
  * ===========
  */
-#define lexer_error(message, ...)			     \
-  fprintf(stderr,					     \
-	  "Lexer Error: " message " (line %d, column %d)\n", \
-	  ##__VA_ARGS__, input->line, input->column);	     \
-  exit(1)
+#define lexer_error(message, ...)			       \
+  fprintf(stderr,					       \
+	  "Lexer Error: " message " (line %ld, column %ld)\n", \
+	  ##__VA_ARGS__, input->line, input->column);	       
 
 // This can be called through the macro lexeme() as
 //   lexeme *l = lexeme(category, content, line, column);
 //               ---------------------------------------
 // which generalizes notation for initializing structures,
 // as you don't always need a function to set it up.
-lexeme *lexeme_new(lexeme_class type, const char *content, int line, int column) {
-  lexeme *t = malloc(sizeof(*t));
-  t->type = type;
-  t->line = line;
-  t->column = column;
+int init_lexeme(lexeme *l, lexeme_class cls,
+		const char *content, int line, int column) {
+  l->type = cls;
+  l->line = line;
+  l->column = column;
     
   int conlen = strlen(content) + 1;
-  t->content = (char *) malloc(conlen);
-  strcpy(t->content, content);
-  return t;
+  l->content = (char *) malloc(conlen);
+  strcpy(l->content, content);
+  return 0;
 }
 
-void free_lexeme(lexeme *l) {
-  if (l->content != NULL)
+int free_lexeme(lexeme *l) {
+  if (l == NULL)
+    return FREE_NULL_LEXEME;
+
+  if (l->content != NULL) {
     free(l->content);
-  if (l != NULL)
-    free(l);
+    l->content = NULL;
+  }
+  free(l);
+  return 0;
 }
 
 #define check(str, id) if (strcmp(contents, str) == 0) return id
@@ -115,7 +116,7 @@ lexeme_class id_or_keyword(const char *contents) {
 }
 #undef check
 
-lexeme *scan(stream *input) {
+int scan(ringbuffer *input, lexeme *l) {
   // Character stack
   // ===============
   char munched[LEXEME_STACK_DEPTH];
@@ -197,17 +198,18 @@ lexeme *scan(stream *input) {
     goto seen_slash;
   default:
     lexer_error("Unexpected symbol \"%c\".", last_munched);
+    return UNEXPECTED_SYMBOL;
   }
 
  seen_dot:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '.':
+    munch;
     goto seen_two_dots;
   case '\n':
+    munch;
     yield(LexStatementTerminator);
   default:
-    spit;
     yield(LexDot);
   }
 
@@ -218,25 +220,23 @@ lexeme *scan(stream *input) {
     yield(LexEllipsis);
   default:
     lexer_error("Unexpected symbol \"%c\".", last_munched);
+    return UNEXPECTED_SYMBOL;
   }
 
  seen_minus:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '>':
+    munch;
     yield(LexRightArrow);
   default:
-    spit;
     yield(LexMinus);
   }
 
  seen_slash:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '/':
     goto skip_comment;
   default:
-    spit;
     yield(LexSlash);
   }
 
@@ -250,29 +250,29 @@ lexeme *scan(stream *input) {
 		"(It is impossible to create commented lines"
 		" without newlines in most text-editors, so"
 		" most likely something else is seriously wrong.)");
+    return EOF_IN_COMMENT;
   default:
     goto skip_comment;
   }
 
  seen_less_than:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '=':
+    munch;
     yield(LexLessOrEq);
   case '-':
+    munch;
     yield(LexLeftArrow);
   default:
-    spit;
     yield(LexLessThan);
   }
   
  seen_greater_than:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '=':
+    munch;
     yield(LexGreaterOrEq);
   default:
-    spit;
     yield(LexGreaterThan);
   }
 
@@ -283,72 +283,73 @@ lexeme *scan(stream *input) {
     yield(LexNotEqual);
   default:
     lexer_error("Expected \"=\" after \"!\". Found \"%c\".", last_munched);
+    return UNEXPECTED_SYMBOL;
   }
 
  seen_equals:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '=':
+    munch;
     yield(LexDoubleEquals);
   default:
-    spit;
     yield(LexEquals);
   }
 
   // Lexing Numbers
   // ==============
  seen_zero:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '.':
-    goto seen_decimal_point;
+    switch(look_ahead(input, 1)) {
+    case DIGIT:
+      munch;
+      goto scan_frac;
+    default:
+      yield(LexDecInteger);
+    }
   case 'x':
   case 'X':
+    munch;
     goto seen_hex;
   case 'b':
   case 'B':
+    munch;
     goto seen_bin;
   default:
-    spit;
     yield(LexDecInteger);
   }
 
  seen_digit:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case DIGIT:
+    munch;
     goto seen_digit;
   case '.':
-    goto seen_decimal_point;
+    switch(look_ahead(input, 1)) {
+    case DIGIT:
+      munch;
+      goto scan_frac;
+    default:
+      yield(LexDecInteger);
+    }
   case 'e':
   case 'E':
+    munch;
     goto seen_exp;
   default:
-    spit;
-    yield(LexDecInteger);
-  }
-  
- seen_decimal_point:
-  munch;
-  switch (last_munched) {
-  case DIGIT:
-    goto scan_frac;
-  default:
-    spit;
-    spit;
     yield(LexDecInteger);
   }
   
  scan_frac:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case DIGIT:
+    munch;
     goto scan_frac;
   case 'e':
   case 'E':
+    munch;
     goto seen_exp;
   default:
-    spit;
     yield(LexFloat);
   }
     
@@ -365,41 +366,19 @@ lexeme *scan(stream *input) {
       goto scan_exp;
     default:
       lexer_error("No digit after \"-\" in exponent! Found \"%c\".", last_munched);
+      return UNEXPECTED_SYMBOL;
     }
   default:
     lexer_error("No exponent after \"e\". Found \"%c\".", last_munched);
+    return UNEXPECTED_SYMBOL;
   }
 
  scan_exp:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case DIGIT:
+    munch;
     goto scan_exp;
-  case '.':
-    goto seen_exp_decimal_point;
   default:
-    spit;
-    yield(LexFloat);
-  }
-
- seen_exp_decimal_point:
-  munch;
-  switch (last_munched) {
-  case DIGIT:
-    goto scan_exp_frac;
-  default:
-    spit;
-    spit;
-    yield(LexFloat);
-  }
-
- scan_exp_frac:
-  munch;
-  switch (last_munched) {
-  case DIGIT:
-    goto scan_exp_frac;
-  default:
-    spit;
     yield(LexFloat);
   }
 
@@ -410,15 +389,15 @@ lexeme *scan(stream *input) {
     goto scan_hex;
   default:
     lexer_error("No hex value after \"0x\". Found \"%c\".", last_munched);
+    return UNEXPECTED_SYMBOL;
   }
 
  scan_hex:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case HEX_DIGIT:
+    munch;
     goto scan_hex;
   default:
-    spit;
     yield(LexHexInteger);
   }
 
@@ -430,16 +409,16 @@ lexeme *scan(stream *input) {
     goto scan_bin;
   default:
     lexer_error("No binary value after \"0b\". Found \"%c\".", last_munched);
+    return UNEXPECTED_SYMBOL;
   }
 
  scan_bin:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case '0':
   case '1':
+    munch;
     goto scan_bin;
   default:
-    spit;
     yield(LexBinInteger);
   }
 
@@ -458,6 +437,7 @@ lexeme *scan(stream *input) {
     goto scan_escaped_character;
   case EOF:
     lexer_error("Unexpected EOF while lexing string!");
+    return EOF_IN_STRING;
   default:
     goto scan_string;
   }
@@ -477,26 +457,27 @@ lexeme *scan(stream *input) {
     goto scan_string;
   default:
     lexer_error("Unrecognized escape character \"%c\".", last_munched);
+    return UNRECOGNISED_ESCAPE_SEQ;
   }
 
 
   // Lexing Identifiers
   // ==================
  scan_identifier:
-  munch;
-  switch (last_munched) {
+  switch (look_ahead(input, 0)) {
   case ALPHANUMERIC:
   case '_':
+    munch;
     // Alphanumberic characters (a-z,A-Z,0-9) and _ can follow
     // the first character in an identifier.
     goto scan_identifier;
   case '?':
+    munch;
     // A question mark is legal on the end, so don't spit
     // it out! It is only legal as the last character, however,
     // so we stop searching here.
     yield(id_or_keyword(munched));
   default:
-    spit;
     yield(id_or_keyword(munched));
   }
   

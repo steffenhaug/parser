@@ -3,7 +3,7 @@
 #include <stddef.h>
 
 #include "stdbool.h"
-#include "stream.h"
+#include "ringbuffer.h"
 #include "lexer.h"
 #include "ast.h"
 

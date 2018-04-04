@@ -1,4 +1,9 @@
-CFILES = stream.c lexer.c parser.c ast.c
+CFILES = ringbuffer.c lexer.c parser.c ast.c
+
+TMPLEXCHANGE = main.c ringbuffer.c lexer.c
+
+lex:
+	clang -o parser.out $(TMPLEXCHANGE)
 
 debug:
 	gcc -o parser.out main.c $(CFILES)
