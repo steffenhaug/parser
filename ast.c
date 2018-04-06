@@ -199,7 +199,7 @@ void print_sexpr(ast *tree) {
     printf("(%s ", ast_class_tostr(tree->type));
     for (int i = 0; i < tree->children.length; i++)
       print_sexpr(&tree->children.data[i]);
-    printf("\b)");
+    printf("\b) ");
   }
 }
 

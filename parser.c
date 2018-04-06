@@ -127,7 +127,8 @@ int parse_atom(parser *p, ast *atom) {
     error_code = match_store_value(p, LexString, atom);
     break;
   default:
-    parser_error("Expected atomic value, found %s. (line: %d, column: %d)",
+    parser_error("Expected atomic value, found %s. "
+		 "(line: %zu, column: %zu)",
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);
@@ -429,28 +430,23 @@ int parse_expression(parser *p, ast *expr) {
 
 int advance(parser *p) {
   // Free the previous lexeme
-  free_lexeme(p->lookahead[p->position]);
+  free_lexeme(&p->lookahead[p->position]);
 
   // Get a new one in its place
-  p->lookahead[p->position] = scan(p->input);
+  scan(p->input, &p->lookahead[p->position]);
 
   // Advance the position, potentially wrapping around
   p->position = (p->position + 1) % MAX_LOOKAHEAD;
   return 0;
 }
 
-int init_parser(parser *p, stream *s) {
-  if (s == NULL) {
-    parser_error("Failed to initialize Parser! Stream is NULL.");
-    return STREAM_IS_NULL;
-  }
-
-  p->input = s;
+int init_parser(parser *p, ringbuffer *b) {
+  p->input = b;
   p->position = 0;
   
   // Fill the lookahead ring-buffer
   for (int i = 0; i < MAX_LOOKAHEAD; i++) {
-    p->lookahead[i] = scan(p->input);
+    scan(p->input, &p->lookahead[i]);
   }
 
   return 0;
@@ -460,11 +456,12 @@ int free_parser(parser *p) {
   if (NULL == p)
     return 1;
   for (int i = 0; i < MAX_LOOKAHEAD; i++)
-    free_lexeme(p->lookahead[i]);
+    free_lexeme(&p->lookahead[i]);
+  return 0;
 }
 
-lexeme *LA(parser *p, size_t i) {
-  return p->lookahead[i + p->position];
+const lexeme *LA(parser *p, size_t i) {
+  return &p->lookahead[i + p->position];
 }
 
 lexeme_class LT(parser *p, size_t i) {
@@ -475,7 +472,7 @@ int match(parser *p, lexeme_class cls) {
   // Assert that the current lexeme has the right type
   int error_code = 0;
   if (LT(p, 0) != cls) {
-    parser_error("Failed to match %s, found %s. (line: %d, column: %d)",
+    parser_error("Failed to match %s, found %s. (line: %zu, column: %zu)",
 		 lexeme_class_tostr(cls),
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
@@ -491,7 +488,7 @@ int match_store_value(parser *p, lexeme_class cls, ast *node) {
   int error_code = 0;
 
   if (LT(p, 0) != cls) {
-    parser_error("Failed to match %s, found %s. (line: %d, column: %d)",
+    parser_error("Failed to match %s, found %s. (line: %zu, column: %zu)",
 		 lexeme_class_tostr(cls),
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
@@ -541,7 +538,8 @@ int match_store_value(parser *p, lexeme_class cls, ast *node) {
     break;
   }
   default:
-    parser_error("Expected lexeme with value. Found %s. (line: %d, column: %d)",
+    parser_error("Expected lexeme with value. Found %s. "
+		 "(line: %zu, column: %zu)",
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);

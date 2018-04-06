@@ -63,19 +63,17 @@
 	  "Lexer Error: " message " (line %ld, column %ld)\n", \
 	  ##__VA_ARGS__, input->line, input->column);	       
 
-// This can be called through the macro lexeme() as
-//   lexeme *l = lexeme(category, content, line, column);
-//               ---------------------------------------
-// which generalizes notation for initializing structures,
-// as you don't always need a function to set it up.
-int init_lexeme(lexeme *l, lexeme_class cls,
-		const char *content, int line, int column) {
+int init_lexeme(lexeme *l, lexeme_class cls, const char *content,
+		int line, int column) {
   l->type = cls;
   l->line = line;
   l->column = column;
     
-  int conlen = strlen(content) + 1;
-  l->content = (char *) malloc(conlen);
+  int size_of_content = strlen(content) + 1;
+  l->content = (char *) malloc(size_of_content);
+  if (l->content == NULL)
+    return 1;
+
   strcpy(l->content, content);
   return 0;
 }
@@ -84,11 +82,10 @@ int free_lexeme(lexeme *l) {
   if (l == NULL)
     return FREE_NULL_LEXEME;
 
-  if (l->content != NULL) {
-    free(l->content);
-    l->content = NULL;
-  }
-  free(l);
+  free(l->content);
+  l->line = 0;
+  l->column = 0;
+  l->content = NULL;
   return 0;
 }
 
@@ -540,6 +537,7 @@ const char* lexeme_class_tostr(lexeme_class c) {
   check(LexFalse);
   check(LexNot);
   check(LexStatementTerminator);
+  check(LexNull);
   }
 }
 #undef check

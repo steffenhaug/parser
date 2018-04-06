@@ -14,6 +14,7 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
 
   b->position = 0;
   b->last_position = fread(b->buffer, sizeof(char), BATCH_SIZE, b->source) - 1;
+  b->previous = 0;
 
   // Line starts at one, column at zero, because
   // column is incremented immediately as we "advance"

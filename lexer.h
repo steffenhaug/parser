@@ -254,19 +254,20 @@ typedef enum {
   // Special weird stuff
   LexEndOfFile,           // EOF
   LexStatementTerminator, // ".\n"
+  LexNull,                // "dummy" lexeme
 } lexeme_class;
 
 typedef struct {
   lexeme_class type;
   char *content;
-  int line;
-  int column;
+  size_t line;
+  size_t column;
 } lexeme;
 
 /* managing lexemes */
 
-int init_lexeme(lexeme *l, lexeme_class cls,
-		const char* content, int line, int column);
+int init_lexeme(lexeme *l, lexeme_class cls, const char* content,
+		int line, int column);
 
 int free_lexeme(lexeme *l);
 

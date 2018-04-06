@@ -3,6 +3,8 @@
 
 #include "ringbuffer.h"
 #include "lexer.h"
+#include "parser.h"
+#include "ast.h"
 
 void print(lexeme *a) {
   printf("(lexeme) {class: %25s, content: %10s, line %2d, column %2d}\n",
@@ -26,17 +28,22 @@ int main() {
 		    "g(H[i, j], x mod n).\n");
 
   int error_code = 0;
-  lexeme l;
 
-  do {
-    error_code = scan(&b, &l);
-    print(&l);
-  } while (l.type != LexEndOfFile);
+  parser p;
+  init_parser(&p, &b);
+  
+  ast tree;
+  parse_root(&p, &tree);
 
+  print_sexpr(&tree);
   
 
 
+  
 
+  free_ast(&tree);
+  free_parser(&p);
+  free_ringbuffer(&b);
   
   return 0;
 }

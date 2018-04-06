@@ -14,7 +14,6 @@
  * Defines error codes, and a macro for throwing errors.
  */
 
-#define STREAM_IS_NULL 10
 #define MATCH_FAILED 20
 #define MATCH_STORE_NO_VALUE 21
 #define EXPECTED_ATOM 30
@@ -26,9 +25,9 @@
 
 
 typedef struct {
-  stream *input;
+  ringbuffer *input;
   size_t position;
-  lexeme *lookahead[MAX_LOOKAHEAD];
+  lexeme lookahead[MAX_LOOKAHEAD];
 } parser;
 
 
@@ -55,7 +54,7 @@ int parse_expression(parser *p, ast *expr);
 
 
 
-int init_parser(parser *p, stream *s);
+int init_parser(parser *p, ringbuffer *b);
 int free_parser(parser *p);
 int advance(parser *p);
 
@@ -72,7 +71,7 @@ int advance(parser *p);
  * LA(p, 0) and LT(p, 0) gives the current
  * lexeme.
  */
-lexeme *LA(parser *p, size_t i);
+const lexeme *LA(parser *p, size_t i);
 lexeme_class LT(parser *p, size_t i);
 
 int match(parser *p, lexeme_class cls);
