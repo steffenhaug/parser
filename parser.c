@@ -460,7 +460,7 @@ int free_parser(parser *p) {
   return 0;
 }
 
-const lexeme *LA(parser *p, size_t i) {
+lexeme *LA(parser *p, size_t i) {
   return &p->lookahead[i + p->position];
 }
 
@@ -517,24 +517,10 @@ int match_store_value(parser *p, lexeme_class cls, ast *node) {
   case LexFalse:
     node->value.b = false;
     break;
-  case LexString: {
-    char *s = (char*) malloc(strlen(LA(p, 0)->content) + 1);
-    if (s == NULL) {
-      parser_error("Failed do allocate memory for string!");
-      return FAILED_MALLOC;
-    }
-    strcpy(s, LA(p, 0)->content);
-    node->value.s = s;
-    break;
-  }
+  case LexString:
   case LexIdentifier: {
-    char *s = (char*) malloc(strlen(LA(p, 0)->content) + 1);
-    if (s == NULL) {
-      parser_error("Failed do allocate memory for identifier!");
-      return FAILED_MALLOC;
-    }
-    strcpy(s, LA(p, 0)->content);
-    node->value.s = s;
+    node->value.s = LA(p, 0)->content;
+    LA(p, 0)->content = NULL;
     break;
   }
   default:

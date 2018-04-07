@@ -1,0 +1,281 @@
+suite(lexer, {
+    unit("init/free lexeme", {
+	lexeme l;
+	init_lexeme(&l, LexNull, "", 1, 1);
+
+	assert(l.type == LexNull);
+	assert(l.line == 1);
+	assert(l.column == 1);
+	
+	free_lexeme(&l);
+    });
+
+    unit("line/column tracking", {
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "a b c \n"
+			  "d e f \n"
+			  "g h i \n");
+	lexeme l;
+
+	const char* expected_values[] = {
+	  "a", "b", "c", "d", "e", "f", "g", "h", "i"
+	};
+
+	for (int j = 0; j < 3; j++) {
+	  for (int i = 0; i < 3; i++) {
+	    scan(&b, &l);
+
+	    // verify content is right
+	    assert(strcmp(l.content, expected_values[3 * j + i]) == 0);
+
+	    // verify line/column is right
+	    int expected_line = j + 1;
+	    int expected_column = 1 + 2 * i;
+
+	    assert(l.line == expected_line);
+	    assert(l.column == expected_column);
+
+	    free_lexeme(&l);
+	  }
+	}
+
+	free_ringbuffer(&b);
+    });
+
+    unit("lex numbers", {
+        ringbuffer b;
+	init_stringbuffer(&b,
+			  "0 123 0b101 0xFFA "
+			  "0.01 1.23 1.2e4 12e-5 ");
+	lexeme l;
+
+	// Integer Lexemes
+	scan(&b, &l);
+	assert(l.type == LexDecInteger);
+	assert(strcmp(l.content, "0") == 0);
+	free_lexeme(&l);
+
+	scan(&b, &l);
+	assert(l.type == LexDecInteger);
+	assert(strcmp(l.content, "123") == 0);
+	free_lexeme(&l);
+
+	scan(&b, &l);
+	assert(l.type == LexBinInteger);
+	assert(strcmp(l.content, "0b101") == 0);
+	free_lexeme(&l);
+
+	scan(&b, &l);
+	assert(l.type == LexHexInteger);
+	assert(strcmp(l.content, "0xFFA") == 0);
+	free_lexeme(&l);
+
+	// Float Lexemes
+	scan(&b, &l);
+	assert(l.type == LexFloat);
+	assert(strcmp(l.content, "0.01") == 0);
+	free_lexeme(&l);
+
+	scan(&b, &l);
+	assert(l.type == LexFloat);
+	assert(strcmp(l.content, "1.23") == 0);
+	free_lexeme(&l);
+
+	scan(&b, &l);
+	assert(l.type == LexFloat);
+	assert(strcmp(l.content, "1.2e4") == 0);
+	free_lexeme(&l);
+
+	scan(&b, &l);
+	assert(l.type == LexFloat);
+	assert(strcmp(l.content, "12e-5") == 0);
+	free_lexeme(&l);
+
+	free_ringbuffer(&b);
+    });
+
+    unit("lex operators and special symbols", {
+    	ringbuffer b;
+	init_stringbuffer(&b,
+			  "+ - * / ^      \n"
+			  ". ... = == !=  \n"
+			  "< > <= >= :    \n"
+			  "; , -> <- mod  \n"
+			  ".\n            \n");
+
+	int error_code = 0;
+	lexeme l;
+
+	int number_of_lexemes = 21;
+	lexeme_class expected_types[] = {
+	  LexPlus, LexMinus, LexAsterisk, LexSlash, LexCaret,
+	  LexDot, LexEllipsis, LexEquals, LexDoubleEquals, LexNotEqual,
+	  LexLessThan, LexGreaterThan, LexLessOrEq, LexGreaterOrEq,
+	  LexColon, LexSemicolon, LexComma, LexRightArrow, LexLeftArrow,
+	  LexMod, LexStatementTerminator,
+	};
+
+	for (int i = 0; i < number_of_lexemes; i++) {
+	  error_code = scan(&b, &l);
+	  assert(!error_code);
+	  assert(l.type == expected_types[i]);
+	  free_lexeme(&l);
+	}
+
+	// make sure we lexed them all
+	error_code = scan(&b, &l);
+	assert(!error_code);
+	assert(l.type == LexEndOfFile);
+	free_lexeme(&l);
+
+	free_ringbuffer(&b);
+    });
+
+    unit("lex brackets", {
+	ringbuffer b;
+	init_stringbuffer(&b, "() [] {} <>");
+	
+	int error_code = 0;
+	lexeme l;
+
+	int number_of_lexemes = 8;
+	lexeme_class expected_types[] = {
+	  LexLeftParenthesis,
+	  LexRightParenthesis,
+	  LexLeftSquareBracket,
+	  LexRightSquareBracket,
+	  LexLeftCurlyBrace,
+	  LexRightCurlyBrace,
+	  LexLessThan,
+	  LexGreaterThan,
+	};
+
+	for (int i = 0; i < number_of_lexemes; i++) {
+	  error_code = scan(&b, &l);
+	  assert(!error_code);
+	  assert(l.type == expected_types[i]);
+	  free_lexeme(&l);
+	}
+
+	// make sure we lexed them all
+	error_code = scan(&b, &l);
+	assert(!error_code);
+	assert(l.type == LexEndOfFile);
+	free_lexeme(&l);
+
+	free_ringbuffer(&b);
+    });
+
+    unit("lexer skips comments", {
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "->" // !
+			  "// foobar loodar. \n"
+			  "// Comments should be invisible \n"
+			  "// past the lexing stage, \n"
+			  "// thus the lexer should only \n"
+			  "// emit two RightArrows (->) for \n"
+			  "// this segment of text \n"
+			  "->"); // !
+
+	int error_code = 0;
+	int number_of_lexemes = 2;
+	lexeme l;
+
+	for (int i = 0; i < number_of_lexemes; i++) {
+	  error_code = scan(&b, &l);
+	  assert(!error_code);
+	  assert(l.type == LexRightArrow);
+	  free_lexeme(&l);
+	}
+
+	// make sure we lexed them all
+	error_code = scan(&b, &l);
+	assert(!error_code);
+	assert(l.type == LexEndOfFile);
+	free_lexeme(&l);
+
+	free_ringbuffer(&b);
+    });
+
+    unit("lex strings", {
+	ringbuffer b;
+	init_stringbuffer(&b, " \"hello, world!\" ");
+
+	lexeme l;
+	int error_code = scan(&b, &l);
+	assert(!error_code);
+	assert(l.type == LexString);
+	assert(strcmp(l.content, "hello, world!") == 0);
+	free_lexeme(&l);
+
+	free_ringbuffer(&b);
+    });
+
+    unit("lex identifiers", {
+	ringbuffer b;
+	init_stringbuffer(&b, "x norm even? _vX2");
+
+	lexeme l;
+	int error_code = 0;
+
+	int number_of_lexemes = 4;
+
+	const char *expected_content[] = {
+	  "x", "norm", "even?", "_vX2",
+	};
+
+	for (int i = 0; i < number_of_lexemes; i++) {
+	  error_code = scan(&b, &l);
+	  assert(!error_code);
+	  assert(l.type == LexIdentifier);
+	  assert(strcmp(l.content, expected_content[i]) == 0);
+	  free_lexeme(&l);
+	}
+
+	error_code = scan(&b, &l);
+	assert(!error_code);
+	assert(l.type == LexEndOfFile);
+	free_lexeme(&l);
+
+	free_ringbuffer(&b);
+    });
+    
+    unit("lex reserved keywords", {
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "mod div func fn use as "
+			  "let where if else cases otherwise "
+			  "and or xor true false ");
+
+	int error_code = 0;
+	int number_of_lexemes = 17;
+	lexeme l;
+
+	lexeme_class expected_types[] = {
+	  LexMod, LexDiv, LexFunc, LexFn, LexUse, LexAs,
+	  LexLet, LexWhere, LexIf, LexElse, LexCases, LexOtherwise,
+	  LexAnd, LexOr, LexXor, LexTrue, LexFalse,
+	};
+
+	for (int i = 0; i < number_of_lexemes; i++) {
+	  error_code = scan(&b, &l);
+	  assert(!error_code);
+	  assert(l.type == expected_types[i]);
+	  free_lexeme(&l);
+	}
+
+	// make sure we lexed them all
+	error_code = scan(&b, &l);
+	assert(!error_code);
+	assert(l.type == LexEndOfFile);
+	free_lexeme(&l);
+
+	free_ringbuffer(&b);
+      });
+})
+
+/* Local Variables:  */
+/* mode: c           */
+/* End:              */

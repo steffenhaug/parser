@@ -71,7 +71,7 @@ int advance(parser *p);
  * LA(p, 0) and LT(p, 0) gives the current
  * lexeme.
  */
-const lexeme *LA(parser *p, size_t i);
+lexeme *LA(parser *p, size_t i);
 lexeme_class LT(parser *p, size_t i);
 
 int match(parser *p, lexeme_class cls);

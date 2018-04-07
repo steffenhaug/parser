@@ -13,7 +13,20 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
   }
 
   b->position = 0;
-  b->last_position = fread(b->buffer, sizeof(char), BATCH_SIZE, b->source) - 1;
+
+  int nread = fread(b->buffer, sizeof(char), BATCH_SIZE, b->source);
+
+  // we need this special case, since fread() does not read the EOF
+  if (nread) {
+    b->last_position = nread - 1;
+  } else {
+    // if zero characters are read, last_position would be -1, which
+    // is not a valid array index. last_position is of type size_t,
+    // so -1 overflows and makes a disaster.
+    b->last_position = 0;
+    b->buffer[0] = EOF;
+  }
+
   b->previous = 0;
 
   // Line starts at one, column at zero, because
@@ -21,6 +34,7 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
   // to the first character!
   b->line = 1;
   b->column = 0;
+
   return 0;
 }
 

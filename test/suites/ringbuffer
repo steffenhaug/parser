@@ -1,0 +1,144 @@
+suite(ringbuffer, { 
+    unit("create buffer from file", {
+	ringbuffer b;
+	init_filebuffer(&b, "numbers.txt");
+
+	assert(b.type == FileBuffer);
+	assert(b.filename == "numbers.txt");
+	assert(b.source != NULL);
+	assert(b.position == 0);
+	assert(b.last_position != 0);
+	assert(b.line == 1);
+	assert(b.column == 0);
+
+	free_ringbuffer(&b);
+    });
+    
+    unit("create stream from string", {
+	ringbuffer b;
+	init_stringbuffer(&b, "");
+
+	assert(b.type == StringBuffer);
+	// source should be NULL, since the buffer is not a file
+	assert(b.source == NULL);
+	assert(b.position == 0);
+	// last pos. should be 0, because the string is empty
+	assert(b.last_position == 0);
+
+	free_ringbuffer(&b);
+    });
+    
+    unit("bgetch (from string)", {
+	ringbuffer b;
+	init_stringbuffer(&b, "abc");
+	char x;
+
+	bgetch(&b, &x);
+	assert(x == 'a');
+	bgetch(&b, &x);
+	assert(x == 'b');
+	bgetch(&b, &x);
+	assert(x == 'c');
+	bgetch(&b, &x);
+	assert(x == EOF);
+
+	free_ringbuffer(&b);
+    });
+
+    // if this suddenly broke, make sure the file is still the same :-)
+    unit("bgetch (from file)", {
+	ringbuffer b;
+	init_filebuffer(&b, "numbers.txt");
+	char x;
+
+	bgetch(&b, &x);
+	assert(x == '0');
+	bgetch(&b, &x);
+	assert(x == ' ');
+	bgetch(&b, &x);
+	assert(x == '1');
+
+	free_ringbuffer(&b);
+    });
+    
+    unit("empty buffer yields EOF forever (string)", {
+	ringbuffer b;
+	init_stringbuffer(&b, "");
+	char x;
+
+	for (int i = 0; i < 25; i++) {
+	  bgetch(&b, &x);
+	  assert(x == EOF);
+	}
+	
+	free_ringbuffer(&b);
+    });
+
+    unit("empty buffer yields EOF forever (file)", {
+	ringbuffer b;
+	init_filebuffer(&b, "empty.txt");
+	char x;
+	
+	for (int i = 0; i < 25; i++) {
+	  bgetch(&b, &x);
+	  assert(x == EOF);
+	}
+	
+	free_ringbuffer(&b);
+    });
+    
+    unit("lookahead (string)", {
+	ringbuffer b;
+	init_stringbuffer(&b, "abc");
+
+	assert(look_ahead(&b, 0) == 'a');
+	assert(look_ahead(&b, 1) == 'b');
+	assert(look_ahead(&b, 2) == 'c');
+	
+	free_ringbuffer(&b);
+    });
+
+    unit("lookahead (file)", {
+	ringbuffer b;
+	init_stringbuffer(&b, "abc");
+
+	assert(look_ahead(&b, 0) == 'a');
+	assert(look_ahead(&b, 1) == 'b');
+	assert(look_ahead(&b, 2) == 'c');
+	
+	free_ringbuffer(&b);
+    });
+    
+    unit("column and line tracking", {
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "abc\n"
+			  "def\n"
+			  "ghi\n");
+
+	char x;
+	for (int j = 1; j <= 3; j++) {
+	  for (int i = 1; i <= 4; i++) {
+	    bgetch(&b, &x);
+	    assert(b.column == i);
+	    assert(b.line == j);
+	  }
+	}
+
+	// verify that we get EOF forever, and that the line/column
+	// does not move past the first EOF
+	for (int i = 0; i < 25; i++) {
+	  bgetch(&b, &x);
+	  assert(x == EOF);
+	  assert(b.line == 4);
+	  assert(b.column == 1);
+	}
+
+	free_ringbuffer(&b);
+    });
+
+})
+
+/* Local Variables:  */
+/* mode: c           */
+/* End:              */

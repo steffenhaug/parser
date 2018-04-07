@@ -1,0 +1,57 @@
+suite(parser, {
+    unit("match, LA and LT", {
+	ringbuffer b;
+	init_stringbuffer(&b, "123 456 789");
+	parser p;
+	init_parser(&p, &b);
+
+	match(&p, LexDecInteger); // match 123
+
+	// look ahead at 456
+	assert(LA(&p, 0)->type == LexDecInteger);
+	assert(LT(&p, 0) == LexDecInteger);
+	assert(LT(&p, 0) == LA(&p, 0)->type);
+
+	// look ahead at 789
+	assert(LT(&p, 1) == LexDecInteger);
+
+	free_parser(&p);
+	free_ringbuffer(&b);
+    });
+
+    unit("match_store_value", {
+	ringbuffer b;
+	init_stringbuffer(&b, "123 \"hi\" x true");
+	parser p;
+	init_parser(&p, &b);
+
+	ast tree;
+
+	init_ast(&tree, ASTInteger);
+	match_store_value(&p, LexDecInteger, &tree);
+	assert(tree.value.i == 123);
+	free_ast(&tree);
+
+	init_ast(&tree, ASTString);
+	match_store_value(&p, LexString, &tree);
+	assert(strcmp(tree.value.s, "hi") == 0);
+	free_ast(&tree);
+
+	init_ast(&tree, ASTIdentifier);
+	match_store_value(&p, LexIdentifier, &tree);
+	assert(strcmp(tree.value.s, "x") == 0);
+	free_ast(&tree);
+
+	init_ast(&tree, ASTBool);
+	match_store_value(&p, LexTrue, &tree);
+	assert(tree.value.b == true);
+	free_ast(&tree);
+	
+	free_parser(&p);
+	free_ringbuffer(&b);
+    });
+})
+
+/* Local Variables:  */
+/* mode: c           */
+/* End:              */
