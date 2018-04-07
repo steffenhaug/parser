@@ -137,15 +137,7 @@ int parse_atom(parser *p, ast *atom) {
   return error_code;
 }
 
-int parse_call(parser *p, ast *call) {
-  return -1; // not implemented
-}
-
-int parse_subscript(parser *p, ast *subsc) {
-  return -1; // not implemented
-}
-
-int parse_primary_expr(parser *p, ast *expr) {
+int parse_primary_expression(parser *p, ast *expr) {
   int error_code = 0;
   ast tmp;
   error_code = parse_atom(p, &tmp);
@@ -177,7 +169,7 @@ int parse_power(parser *p, ast *expr) {
   int error_code = 0;
 
   ast base, exponent;
-  error_code = parse_primary_expr(p, &base);
+  error_code = parse_primary_expression(p, &base);
   if (error_code)
     return error_code;
 

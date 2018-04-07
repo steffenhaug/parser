@@ -484,8 +484,8 @@ int scan(ringbuffer *input, lexeme *l) {
 }
 
 #define check(id) case id: return #id
-const char* lexeme_class_tostr(lexeme_class c) {
-  switch (c) {
+const char* lexeme_class_tostr(lexeme_class cls) {
+  switch (cls) {
   check(LexDecInteger);
   check(LexHexInteger);
   check(LexBinInteger);

@@ -50,6 +50,132 @@ suite(parser, {
 	free_parser(&p);
 	free_ringbuffer(&b);
     });
+
+    unit("parse primary expressions", {
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "true false "
+			  "123 1.2 1.3e-5 "
+			  "x even? \"sample text\" "
+			  "f(x + y, z) A[i - 5, j] ");
+	parser p;
+	init_parser(&p, &b);
+
+	ast tree;
+
+	int number_of_trees = 10;
+	ast_class expected_types[] = {
+	  ASTBool, ASTBool, ASTInteger, ASTFloat, ASTFloat,
+	  ASTIdentifier, ASTIdentifier, ASTString,
+	  ASTCall, ASTSubscript,
+	};
+
+	for (int i = 0; i < number_of_trees; i++) {
+	  parse_primary_expression(&p, &tree);
+	  assert(tree.type == expected_types[i]);
+	  free_ast(&tree);
+	}
+
+	assert(look_ahead(&b, 0) == EOF);
+
+	free_parser(&p);
+	free_ringbuffer(&b);
+    });
+
+    unit("parse math expressions in statements", {
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "1 + 3 * (5 - 6).\n"
+			  "r mod n.\n"
+			  "--6.\n");
+	parser p;
+	init_parser(&p, &b);
+
+	ast tree;
+
+	parse_statement(&p, &tree);
+	assert(tree.type == ASTPlus);
+	assert(child_at(&tree, 0)->type == ASTInteger);
+	assert(child_at(&tree, 1)->type == ASTMul);
+	assert(child_at(child_at(&tree, 1), 0)->type == ASTInteger);
+	assert(child_at(child_at(&tree, 1), 1)->type == ASTMinus);
+	// ... please never do this
+	assert(child_at(child_at(child_at(&tree, 1), 1),
+			0)->type == ASTInteger);
+	assert(child_at(child_at(child_at(&tree, 1), 1),
+			1)->type == ASTInteger);
+
+	free_ast(&tree);
+
+	parse_statement(&p, &tree);
+	assert(tree.type == ASTMod);
+	assert(child_at(&tree, 0)->type == ASTIdentifier);
+	assert(child_at(&tree, 1)->type == ASTIdentifier);
+	free_ast(&tree);
+
+	parse_statement(&p, &tree);
+	assert(tree.type == ASTUnaryMinus);
+	assert(child_at(&tree, 0)->type == ASTUnaryMinus);
+	assert(child_at(child_at(&tree, 0), 0)->type == ASTInteger);
+	free_ast(&tree);
+
+	free_parser(&p);
+	free_ringbuffer(&b);
+    });
+
+    unit("parse comp/bool expressions in statements", {
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "a < b.\n"
+			  "x < y < z.\n"
+			  "i < j and true.\n"
+			  "true or (false xor true) and not true.\n");
+	parser p;
+	init_parser(&p, &b);
+
+	ast tree;
+
+	parse_statement(&p, &tree);
+	assert(tree.type == ASTComp);
+	assert(child_at(&tree, 0)->type == ASTIdentifier);
+	assert(child_at(&tree, 1)->type == ASTCompOps);
+	assert(child_at(&tree, 1)->children.length == 1);
+	assert(child_at(&tree, 2)->type == ASTCompOperands);
+	assert(child_at(&tree, 2)->children.length == 1);
+	free_ast(&tree);
+
+	parse_statement(&p, &tree);
+	assert(tree.type == ASTComp);
+	assert(child_at(&tree, 0)->type == ASTIdentifier);
+	assert(child_at(&tree, 1)->type == ASTCompOps);
+	assert(child_at(&tree, 1)->children.length == 2);
+	assert(child_at(&tree, 2)->type == ASTCompOperands);
+	assert(child_at(&tree, 2)->children.length == 2);
+	free_ast(&tree);
+
+	parse_statement(&p, &tree);
+	assert(tree.type == ASTAnd);
+	free_ast(&tree);
+
+	parse_statement(&p, &tree);
+	assert(tree.type == ASTOr);
+	assert(child_at(&tree, 0)->type == ASTBool);
+	assert(child_at(&tree, 1)->type == ASTAnd);
+	assert(child_at(child_at(&tree, 1), 0)->type == ASTXor);
+	assert(child_at(child_at(&tree, 1), 1)->type == ASTNot);
+	free_ast(&tree);
+
+	free_parser(&p);
+	free_ringbuffer(&b);
+    });
+
+    unit("parse expression list", {
+	assert(false);
+    });
+
+    unit("parse identifier list", {
+	assert(false);
+    });
 })
 
 /* Local Variables:  */

@@ -39,9 +39,7 @@ int parse_expression_list(parser *p, ast *node);
 
 int parse_par_expr(parser *p, ast *expr);
 int parse_atom(parser *p, ast *atom);
-int parse_call(parser *p, ast *call);
-int parse_subscript(parser *p, ast *subsc);
-int parse_primary_expr(parser *p, ast *expr);
+int parse_primary_expression(parser *p, ast *expr);
 int parse_power(parser *p, ast *expr);
 int parse_factor(parser *p, ast *expr);
 int parse_term(parser *p, ast *expr);
@@ -51,8 +49,6 @@ int parse_not_expr(parser *p, ast *expr);
 int parse_and_expr(parser *p, ast *expr);
 int parse_or_expr(parser *p, ast *expr);
 int parse_expression(parser *p, ast *expr);
-
-
 
 int init_parser(parser *p, ringbuffer *b);
 int free_parser(parser *p);

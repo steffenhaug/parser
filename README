@@ -126,13 +126,11 @@ Which also short-cicuits correctly.
 To-do list
 ----------
 [ ] Update the to-do list more than once
-[ ] Refactor the lexer to return error codes instead of crash
+[x] Refactor the lexer to return error codes instead of crash
      [ ] Write tests for failing cases that we can now test for
-[ ] Modularize the unit-testing library
-[ ] NIL type and implicit else NIL. after if.
-[ ] scan() needs to take a pointer to a lexeme and modify it,
-    instead of returning one. Further, scan() needs to free
-    the old lexeme if it is allocated.
+[x] Modularize the unit-testing library
+[ ] Fix the ringbuffer, so that it guarantees the right amount
+    of lookahead, even though we don't need it.
 
 Sources
 -------

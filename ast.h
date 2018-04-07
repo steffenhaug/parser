@@ -79,6 +79,8 @@ int free_ast(ast* node);
 // this is just as mean as it sounds
 int push_child(ast* node, ast child);
 
+ast *child_at(ast *parent, size_t i);
+
 
 /* ast_span
  * ========

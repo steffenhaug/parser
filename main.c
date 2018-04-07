@@ -7,7 +7,7 @@
 #include "ast.h"
 
 void print(lexeme *a) {
-  printf("(lexeme) {class: %25s, content: %10s, line %2d, column %2d}\n",
+  printf("(lexeme) {class: %25s, content: %10s, line %2zu, column %2zu}\n",
 	 lexeme_class_tostr(a->type),
 	 a->type == LexStatementTerminator ? ".\\n" : a->content,
 	 a->line, a->column);
@@ -17,6 +17,9 @@ int main() {
   
   ringbuffer b;
   init_stringbuffer(&b,
+		    "1 + 3 * (5 - 6).\n"
+		    "r mod n.\n"
+		    "--6.\n"
 		    "1 + -x / 6^-y.\n"
 		    "- 567.\n"
 		    "true and not false xor true.\n"

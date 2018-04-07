@@ -63,9 +63,9 @@ https://mort.coffee/home/obscure-c-features/
     printf("    In file: %s. Suite: %s\n", __FILE__, suite_name);	\
     goto test_end;							\
   success:								\
-    printf("%8s %-40.40s %s: %s\n",					\
+    printf("%8s %-40.40s %s\n",						\
 	   GRN "Success:" RESET,					\
-	   description, __FILE__, suite_name);				\
+	   description, __FILE__);					\
   test_end:								\
     free(message);								\
     total++;								\

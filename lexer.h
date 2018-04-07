@@ -273,6 +273,6 @@ int free_lexeme(lexeme *l);
 
 int scan(ringbuffer *input, lexeme *l);
 
-const char* lexeme_class_tostr(lexeme_class c);
+const char* lexeme_class_tostr(lexeme_class cls);
 bool is_comparison(lexeme_class cls);
 bool is_closing_bracket(lexeme_class cls);

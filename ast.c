@@ -30,6 +30,10 @@ int push_child(ast *node, ast child) {
   return error_code;
 }
 
+ast *child_at(ast *parent, size_t i) {
+  return &parent->children.data[i];
+}
+
 /* ast_span
  * ========
  */
