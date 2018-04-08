@@ -1,9 +1,9 @@
 suite(lexer, {
     unit("init/free lexeme", {
 	lexeme l;
-	init_lexeme(&l, LexNull, "", 1, 1);
+	init_lexeme(&l, LexEndOfFile, "", 1, 1);
 
-	assert(l.type == LexNull);
+	assert(l.type == LexEndOfFile);
 	assert(l.line == 1);
 	assert(l.column == 1);
 	
@@ -245,16 +245,16 @@ suite(lexer, {
     unit("lex reserved keywords", {
 	ringbuffer b;
 	init_stringbuffer(&b,
-			  "mod div func fn use as "
+			  "mod func fn use as "
 			  "let where if else cases otherwise "
 			  "and or xor true false ");
 
 	int error_code = 0;
-	int number_of_lexemes = 17;
+	int number_of_lexemes = 16;
 	lexeme l;
 
 	lexeme_class expected_types[] = {
-	  LexMod, LexDiv, LexFunc, LexFn, LexUse, LexAs,
+	  LexMod, LexFunc, LexFn, LexUse, LexAs,
 	  LexLet, LexWhere, LexIf, LexElse, LexCases, LexOtherwise,
 	  LexAnd, LexOr, LexXor, LexTrue, LexFalse,
 	};

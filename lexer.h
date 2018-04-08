@@ -196,65 +196,63 @@
  *     stream. This helps with reporting errors.
  */
 
-// ... X macro?
+// https://en.wikipedia.org/wiki/X_Macro
+#define LIST_OF_LEXEMES							\
+  X(LexDecInteger, "<dec int>")						\
+  X(LexHexInteger, "<hex int>")						\
+  X(LexBinInteger, "<bin int>")						\
+  X(LexFloat, "<float>")						\
+  X(LexString, "<string>")						\
+  X(LexIdentifier, "<id>")						\
+  X(LexLeftParenthesis, "(")						\
+  X(LexRightParenthesis, ")")						\
+  X(LexLeftCurlyBrace, "{")						\
+  X(LexRightCurlyBrace, "}")						\
+  X(LexLeftSquareBracket, "[")						\
+  X(LexRightSquareBracket, "]")						\
+  X(LexLessThan, "<")							\
+  X(LexGreaterThan, ">")						\
+  X(LexLessOrEq, "<=")							\
+  X(LexGreaterOrEq, ">=")						\
+    X(LexEquals, "=")							\
+  X(LexDoubleEquals, "==")						\
+  X(LexNotEqual, "!=")							\
+  X(LexLeftArrow, "<-")							\
+  X(LexRightArrow, "->")						\
+  X(LexDot, ".")							\
+  X(LexComma, ",")							\
+  X(LexColon, ":")							\
+  X(LexSemicolon, ";")							\
+  X(LexEllipsis, "...")							\
+  X(LexMinus, "-")							\
+  X(LexPlus, "+")							\
+  X(LexAsterisk, "*")							\
+  X(LexSlash, "/")							\
+  X(LexCaret, "^")							\
+  X(LexMod, "mod")							\
+  X(LexNot, "not")							\
+  X(LexAnd, "and")							\
+  X(LexOr, "or")							\
+  X(LexXor, "xor")							\
+  X(LexTrue, "true")							\
+  X(LexFalse, "false")							\
+  X(LexFunc, "func")							\
+  X(LexFn, "fn")							\
+  X(LexUse, "use")							\
+  X(LexAs, "as")							\
+  X(LexLet, "let")							\
+  X(LexWhere, "where")							\
+  X(LexIf, "if")							\
+  X(LexElse, "else")							\
+  X(LexCases, "cases")							\
+  X(LexOtherwise, "otherwise")						\
+  X(LexEndOfFile, "<eof>")						\
+  X(LexStatementTerminator, "<.>")
+  
 typedef enum {
-  // "Container" Lexemes
-  LexDecInteger, // Decimal integers, like 1024
-  LexHexInteger, // Hexadecimal integers, like 0xFF00FF
-  LexBinInteger, // Binary integers, like 0b11011
-  LexFloat,      // Floats, like 12.3, but also 12e3 (!) and 1.2e3 and 1e2.3 
-  LexString,     // Strings, like "hello, world"
-  LexIdentifier, // Names identifiyng things like variables
-  // Brackets
-  LexLeftParenthesis,    // (
-  LexRightParenthesis,   // )
-  LexLeftCurlyBrace,     // {
-  LexRightCurlyBrace,    // }
-  LexLeftSquareBracket,  // [
-  LexRightSquareBracket, // ]
-  // Operators (< and > can also be brackets, of course)
-  LexLessThan,     // <
-  LexGreaterThan,  // >
-  LexLessOrEq,     // <=
-  LexGreaterOrEq,  // >=
-  LexEquals,       // =
-  LexDoubleEquals, // ==
-  LexNotEqual,     // !=
-  LexLeftArrow,    // <-
-  LexRightArrow,   // ->
-  LexDot,          // .
-  LexComma,        // ,
-  LexColon,        // :
-  LexSemicolon,    // ;
-  LexEllipsis,     // ...
-  LexMinus,        // -
-  LexPlus,         // +
-  LexAsterisk,     // *
-  LexSlash,        // /
-  LexCaret,        // ^
-  // Reserved Keywords
-  LexDiv,
-  LexMod,
-  LexNot,
-  LexAnd,
-  LexOr,
-  LexXor,
-  LexTrue,
-  LexFalse,
-  LexFunc,
-  LexFn,
-  LexUse,
-  LexAs,
-  LexLet,
-  LexWhere,
-  LexIf,
-  LexElse,
-  LexCases,
-  LexOtherwise,
-  // Special weird stuff
-  LexEndOfFile,           // EOF
-  LexStatementTerminator, // ".\n"
-  LexNull,                // "dummy" lexeme
+#define X(lexeme_name, lexeme_repr) lexeme_name,
+  LIST_OF_LEXEMES
+#undef X
 } lexeme_class;
 
 typedef struct {

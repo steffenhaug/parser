@@ -44,10 +44,9 @@ int free_lexeme(lexeme *l) {
   return 0;
 }
 
-#define check(str, id) if (strcmp(contents, str) == 0) return id
 lexeme_class id_or_keyword(const char *contents) {
+#define check(str, id) if (strcmp(contents, str) == 0) return id
   check("mod", LexMod);
-  check("div", LexDiv);
   check("func", LexFunc);
   check("fn", LexFn);
   check("use", LexUse);
@@ -64,57 +63,35 @@ lexeme_class id_or_keyword(const char *contents) {
   check("xor", LexXor);
   check("true", LexTrue);
   check("false", LexFalse);
+  // if none of the above matches, the string is not a reserved keyword
   return LexIdentifier;
-}
 #undef check
+}
 
 #define munch bgetch(input, &munched[++stackp])
-/* Pull a new character from the input stream,
- * and push it to the stack.
- */
+// Pull a new character from the input stream.
 
 #define drop stackp--
-/* Drop the character on the top of the stack.
- */
+// Drop the character on the top of the stack.
 
 #define push(element) munched[++stackp] = element
-/* Push an element, not necessarily from the input
- * stream, to the stack.
- */
-
-#define reset_munch				\
-  stackp = 0;					\
-  bgetch(input, &munched[stackp]);		\
-  munch_start = input->column;
-/* Executed when the state machine enters the
- * start-state. Prepares the stack for scanning
- * a new lexeme.
- */
+// Push an element, not necessarily from the input stream, to the stack.
 
 #define last_munched munched[stackp]
-/* Peeks the stack to get the most recently munched
- * character.
- */
+// Top of the 'munched' stack.
 
 #define yield(category)						\
   init_lexeme(l, category, NULL, input->line, munch_start);	\
   return 0
-/* Initializes the lexeme. The stack is copied into the lexemes,
- * so it is null terminated.
- */
+// Initializes the lexeme just scanned.
 
 #define yield_value(category)					\
   munched[stackp + 1] = '\0';					\
   init_lexeme(l, category, munched, input->line, munch_start);	\
   return 0
-/* Initializes the lexeme. The stack is copied into the lexemes,
- * so it is null terminated.
- */
-
+// Initializes the lexeme just scanned, and *copies* 'munched' to its content.
 
 int scan(ringbuffer *input, lexeme *l) {
-  // Character stack
-  // ===============
   char munched[LEXEME_STACK_DEPTH];
   int stackp;
   int munch_start;
@@ -133,12 +110,12 @@ int scan(ringbuffer *input, lexeme *l) {
    *   not span multiple lines.
    */
 
-  /* -------------------------- */
-  /* BEGINNING OF STATE MACHINE */
-  /* -------------------------- */
-
  start:
-  reset_munch;
+  // prepare the stack
+  stackp = 0;
+  bgetch(input, &munched[stackp]);
+  // record the start column in the input
+  munch_start = input->column;
   switch (last_munched) {
   case WHITESPACE:
     goto start;
@@ -147,7 +124,7 @@ int scan(ringbuffer *input, lexeme *l) {
   case NONZERO_DIGIT:
     goto seen_digit;
   case '\"':
-    reset_munch; // get rid of the quote we just ate
+    drop; // get rid of the quote we just ate
     goto scan_string;
   case ALPHA: // (a-z,A-Z,_) are the only valid start of identifiers
   case '_':
@@ -355,7 +332,6 @@ int scan(ringbuffer *input, lexeme *l) {
   case DIGIT:
     goto scan_exp;
   case '-':
-    // Verify that the character after the minus is a digit
     munch;
     switch (last_munched) {
     case DIGIT:
@@ -442,7 +418,7 @@ int scan(ringbuffer *input, lexeme *l) {
   munch;
   switch (last_munched) {
   case 'n':
-    drop; // drop the esape code
+    drop; // drop the n
     drop; // drop the slash
     push('\n'); // push a literal newline
     goto scan_string;
@@ -463,15 +439,15 @@ int scan(ringbuffer *input, lexeme *l) {
   switch (look_ahead(input, 0)) {
   case ALPHANUMERIC:
   case '_':
-    munch;
     // Alphanumberic characters (a-z,A-Z,0-9) and _ can follow
     // the first character in an identifier.
+    munch;
     goto scan_identifier;
   case '?':
-    munch;
     // A question mark is legal on the end, so don't spit
     // it out! It is only legal as the last character, however,
     // so we stop searching here.
+    munch;
     yield_value(id_or_keyword(munched));
   default:
     yield_value(id_or_keyword(munched));
@@ -485,64 +461,13 @@ int scan(ringbuffer *input, lexeme *l) {
 #undef yield
 #undef yield_eof
 
-#define check(id) case id: return #id
 const char* lexeme_class_tostr(lexeme_class cls) {
   switch (cls) {
-  check(LexDecInteger);
-  check(LexHexInteger);
-  check(LexBinInteger);
-  check(LexFloat);
-  check(LexString);
-  check(LexIdentifier);
-  check(LexLeftParenthesis);
-  check(LexRightParenthesis);
-  check(LexLeftCurlyBrace);
-  check(LexRightCurlyBrace);
-  check(LexLeftSquareBracket);
-  check(LexRightSquareBracket);
-  check(LexLeftArrow);
-  check(LexRightArrow);
-  check(LexPlus);
-  check(LexMinus);
-  check(LexAsterisk);
-  check(LexSlash);
-  check(LexMod);
-  check(LexDiv);
-  check(LexEndOfFile);
-  check(LexDot);
-  check(LexComma);
-  check(LexColon);
-  check(LexSemicolon);
-  check(LexEllipsis);
-  check(LexLessThan);
-  check(LexGreaterThan);
-  check(LexLessOrEq);
-  check(LexGreaterOrEq);
-  check(LexEquals);
-  check(LexDoubleEquals);
-  check(LexNotEqual);
-  check(LexFunc);
-  check(LexFn);
-  check(LexUse);
-  check(LexAs);
-  check(LexLet);
-  check(LexWhere);
-  check(LexIf);
-  check(LexElse);
-  check(LexCases);
-  check(LexOtherwise);
-  check(LexCaret);
-  check(LexAnd);
-  check(LexOr);
-  check(LexXor);
-  check(LexTrue);
-  check(LexFalse);
-  check(LexNot);
-  check(LexStatementTerminator);
-  check(LexNull);
+#define X(lclass, lrepr) case lclass: return lrepr;
+    LIST_OF_LEXEMES
+#undef X
   }
 }
-#undef check
 
 bool is_comparison(lexeme_class cls) {
   return
