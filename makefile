@@ -1,12 +1,17 @@
-CFILES = stream.c lexer.c parser.c ast.c
+CFILES = ringbuffer.c lexer.c parser.c ast.c
 
 debug:
-	gcc -o parser.out main.c $(CFILES)
+	clang -o parser.out main.c $(CFILES)
 
 prod:
-	gcc -o parser.out -O2 main.c $(CFILES)
+	clang -o parser.out -O2 main.c $(CFILES)
 
 .PHONY: test
 test:
-	gcc -O0 -o test/parser_test.out test/tmain.c $(CFILES)
+	clang -O0 -o test/parser_test.out test/tmain.c $(CFILES)
 	cd test && ./parser_test.out
+
+.PHONY: memcheck
+memcheck:
+	clang -g -o test/parser_test.out test/tmain.c $(CFILES)
+	cd test && valgrind --leak-check=full --track-origins=yes ./parser_test.out

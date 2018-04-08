@@ -1,0 +1,43 @@
+suite(ast, {
+    unit("initializing a root node", {
+	ast root;
+	init_ast(&root, ASTRoot);
+	free_ast(&root);
+    });
+
+    unit("building minimal AST (+ 5 10) manually", {
+	ast root;
+	init_ast(&root, ASTRoot);
+
+	ast plus, five, ten;
+	init_ast(&five, ASTInteger);
+	five.value.i = 5;
+
+	init_ast(&ten, ASTInteger);
+	ten.value.i = 0;
+
+	init_ast(&plus, ASTPlus);
+	push_child(&plus, five);
+	push_child(&plus, ten);
+
+	push_child(&root, plus);
+
+	assert(root.children.data[0].type == ASTPlus);
+	assert(root.children.data[0].children.data[0].type == ASTInteger);
+	assert(root.children.data[0].children.data[1].type == ASTInteger);
+
+	fit_ast_vector(&root.children);
+	fit_ast_vector(&root.children.data[0].children);
+
+	assert(root.children.length = 1);
+	assert(root.children.data[0].children.length = 2);
+
+	free_ast(&root);
+	// should free five and ten recursively
+	// verify with valgrind :-)
+    });
+})
+
+/* Local Variables:  */
+/* mode: c           */
+/* End:              */

@@ -23,12 +23,21 @@
 #pragma once
 
 #include <stdbool.h>
-#include "stream.h"
+#include "ringbuffer.h"
 
 
 // THe maximum stack depth is  also the max length of
 // strings, identifiers and so on.
 #define LEXEME_STACK_DEPTH 512
+
+/*
+ * Error Codes
+ */
+#define FREE_NULL_LEXEME 301
+#define UNEXPECTED_SYMBOL 302
+#define EOF_IN_COMMENT 303
+#define EOF_IN_STRING 304
+#define UNRECOGNISED_ESCAPE_SEQ 305
 
 /* Equivalence Classes
  * -------------------
@@ -245,26 +254,25 @@ typedef enum {
   // Special weird stuff
   LexEndOfFile,           // EOF
   LexStatementTerminator, // ".\n"
+  LexNull,                // "dummy" lexeme
 } lexeme_class;
 
 typedef struct {
   lexeme_class type;
   char *content;
-  int line;
-  int column;
+  size_t line;
+  size_t column;
 } lexeme;
 
 /* managing lexemes */
 
-#define lexeme(type, content, line, column)	\
-  lexeme_new(type, content, line, column)
+int init_lexeme(lexeme *l, lexeme_class cls, const char* content,
+		int line, int column);
 
-lexeme *lexeme_new(lexeme_class type, const char* content, int l, int c);
+int free_lexeme(lexeme *l);
 
-void free_lexeme(lexeme *l);
+int scan(ringbuffer *input, lexeme *l);
 
-lexeme *scan(stream *s);
-
-const char* lexeme_class_tostr(lexeme_class c);
+const char* lexeme_class_tostr(lexeme_class cls);
 bool is_comparison(lexeme_class cls);
 bool is_closing_bracket(lexeme_class cls);
