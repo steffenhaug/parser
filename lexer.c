@@ -5,55 +5,6 @@
 #include "ringbuffer.h"
 #include "lexer.h"
 
-/* Internal Stack Management
- * =========================
- * These macros manage the internal stack ("munched") in 
- * the state machine.
- */
-
-#define munch bgetch(input, &munched[++stackp])
-/* Pull a new character from the input stream,
- * and push it to the stack.
- */
-
-#define drop stackp--
-/* Drop the character on the top of the stack.
- */
-
-#define push(element) munched[++stackp] = element
-/* Push an element, not necessarily from the input
- * stream, to the stack.
- */
-
-#define reset_munch				\
-  stackp = 0;					\
-  bgetch(input, &munched[stackp]);		\
-  munch_start = input->column;
-/* Executed when the state machine enters the
- * start-state. Prepares the stack for scanning
- * a new lexeme.
- */
-
-#define last_munched munched[stackp]
-/* Peeks the stack to get the most recently munched
- * character.
- */
-
-/* Outputting lexemes
- * ==================
- * These macros abstract away the process of "returning" a
- * lexeme. The "yield"-nomenclature is borrowed from python,
- * since the stream preserves its state across calls to scan.
- */
-
-#define yield(category)						\
-  munched[stackp + 1] = '\0';					\
-  init_lexeme(l, category, munched, input->line, munch_start);	\
-  return 0
-
-#define yield_eof							\
-  init_lexeme(l, LexEndOfFile, "eof", input->line, munch_start);	\
-  return 0
 
 /* Lexer Error 
  * ===========
@@ -68,13 +19,17 @@ int init_lexeme(lexeme *l, lexeme_class cls, const char *content,
   l->type = cls;
   l->line = line;
   l->column = column;
-    
-  int size_of_content = strlen(content) + 1;
-  l->content = (char *) malloc(size_of_content);
-  if (l->content == NULL)
-    return 1;
 
-  strcpy(l->content, content);
+  if (content == NULL) {
+    l->content = NULL;
+  } else {
+    int size_of_content = strlen(content) + 1;
+    l->content = (char *) malloc(size_of_content);
+    if (l->content == NULL)
+      return 1;
+
+    strcpy(l->content, content);
+  }
   return 0;
 }
 
@@ -112,6 +67,50 @@ lexeme_class id_or_keyword(const char *contents) {
   return LexIdentifier;
 }
 #undef check
+
+#define munch bgetch(input, &munched[++stackp])
+/* Pull a new character from the input stream,
+ * and push it to the stack.
+ */
+
+#define drop stackp--
+/* Drop the character on the top of the stack.
+ */
+
+#define push(element) munched[++stackp] = element
+/* Push an element, not necessarily from the input
+ * stream, to the stack.
+ */
+
+#define reset_munch				\
+  stackp = 0;					\
+  bgetch(input, &munched[stackp]);		\
+  munch_start = input->column;
+/* Executed when the state machine enters the
+ * start-state. Prepares the stack for scanning
+ * a new lexeme.
+ */
+
+#define last_munched munched[stackp]
+/* Peeks the stack to get the most recently munched
+ * character.
+ */
+
+#define yield(category)						\
+  init_lexeme(l, category, NULL, input->line, munch_start);	\
+  return 0
+/* Initializes the lexeme. The stack is copied into the lexemes,
+ * so it is null terminated.
+ */
+
+#define yield_value(category)					\
+  munched[stackp + 1] = '\0';					\
+  init_lexeme(l, category, munched, input->line, munch_start);	\
+  return 0
+/* Initializes the lexeme. The stack is copied into the lexemes,
+ * so it is null terminated.
+ */
+
 
 int scan(ringbuffer *input, lexeme *l) {
   // Character stack
@@ -154,7 +153,7 @@ int scan(ringbuffer *input, lexeme *l) {
   case '_':
     goto scan_identifier;
   case EOF:
-    yield_eof;
+    yield(LexEndOfFile);
   case '(':
     yield(LexLeftParenthesis);
   case ')':
@@ -302,7 +301,7 @@ int scan(ringbuffer *input, lexeme *l) {
       munch;
       goto scan_frac;
     default:
-      yield(LexDecInteger);
+      yield_value(LexDecInteger);
     }
   case 'x':
   case 'X':
@@ -313,7 +312,7 @@ int scan(ringbuffer *input, lexeme *l) {
     munch;
     goto seen_bin;
   default:
-    yield(LexDecInteger);
+    yield_value(LexDecInteger);
   }
 
  seen_digit:
@@ -327,14 +326,14 @@ int scan(ringbuffer *input, lexeme *l) {
       munch;
       goto scan_frac;
     default:
-      yield(LexDecInteger);
+      yield_value(LexDecInteger);
     }
   case 'e':
   case 'E':
     munch;
     goto seen_exp;
   default:
-    yield(LexDecInteger);
+    yield_value(LexDecInteger);
   }
   
  scan_frac:
@@ -347,7 +346,7 @@ int scan(ringbuffer *input, lexeme *l) {
     munch;
     goto seen_exp;
   default:
-    yield(LexFloat);
+    yield_value(LexFloat);
   }
     
  seen_exp:
@@ -376,7 +375,7 @@ int scan(ringbuffer *input, lexeme *l) {
     munch;
     goto scan_exp;
   default:
-    yield(LexFloat);
+    yield_value(LexFloat);
   }
 
  seen_hex:
@@ -395,7 +394,7 @@ int scan(ringbuffer *input, lexeme *l) {
     munch;
     goto scan_hex;
   default:
-    yield(LexHexInteger);
+    yield_value(LexHexInteger);
   }
 
  seen_bin:
@@ -416,7 +415,7 @@ int scan(ringbuffer *input, lexeme *l) {
     munch;
     goto scan_bin;
   default:
-    yield(LexBinInteger);
+    yield_value(LexBinInteger);
   }
 
 
@@ -428,7 +427,7 @@ int scan(ringbuffer *input, lexeme *l) {
   case '\"':
     // Literal Quote; end of string.
     drop;
-    yield(LexString);
+    yield_value(LexString);
   case '\\':
     // Literal Slash; escape a character.
     goto scan_escaped_character;
@@ -473,15 +472,18 @@ int scan(ringbuffer *input, lexeme *l) {
     // A question mark is legal on the end, so don't spit
     // it out! It is only legal as the last character, however,
     // so we stop searching here.
-    yield(id_or_keyword(munched));
+    yield_value(id_or_keyword(munched));
   default:
-    yield(id_or_keyword(munched));
+    yield_value(id_or_keyword(munched));
   }
-  
-  /* -------------------- */
-  /* END OF STATE MACHINE */
-  /* -------------------- */
 }
+#undef munch
+#undef drop
+#undef push
+#undef reset_munch
+#undef last_munched
+#undef yield
+#undef yield_eof
 
 #define check(id) case id: return #id
 const char* lexeme_class_tostr(lexeme_class cls) {
