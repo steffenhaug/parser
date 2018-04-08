@@ -170,11 +170,35 @@ suite(parser, {
     });
 
     unit("parse expression list", {
-	assert(false);
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "x + y, z, f(x, A[i, j]) ");
+	parser p;
+	init_parser(&p, &b);
+	ast tree;
+	init_ast(&tree, ASTRoot);
+	parse_expression_list(&p, &tree);
+	assert(tree.children.length == 3);
+
+	free_ast(&tree);
+	free_parser(&p);
+	free_ringbuffer(&b);
     });
 
     unit("parse identifier list", {
-	assert(false);
+	ringbuffer b;
+	init_stringbuffer(&b,
+			  "x, a, norm, even?");
+	parser p;
+	init_parser(&p, &b);
+	ast tree;
+	init_ast(&tree, ASTRoot);
+	parse_identifier_list(&p, &tree);
+	assert(tree.children.length == 4);
+
+	free_ast(&tree);
+	free_parser(&p);
+	free_ringbuffer(&b);
     });
 })
 
