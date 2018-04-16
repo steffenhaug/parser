@@ -3,8 +3,12 @@
 #include "ringbuffer.h"
 #include "common.h"
 
-int lookahead_limit(ringbuffer *b) {
-  return mod(b->last_position - BATCH_SIZE, BUFFER_SIZE);
+size_t lookahead_limit(ringbuffer *b) {
+  if (b->type == FileBuffer)
+    return mod(b->last_position - BATCH_SIZE, BUFFER_SIZE);
+  else
+    // strings are not buffered, so we need this special case
+    return b->last_position;
 }
 
 int init_filebuffer(ringbuffer *b, const char *filename) {
@@ -19,6 +23,7 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
 
   b->position = 0;
 
+  // read two batches
   int nread = fread(b->buffer, sizeof(char), 2 * BATCH_SIZE, b->source);
 
   // we need this special case, since fread() does not read the EOF
@@ -102,7 +107,7 @@ int advance_filebuffer(ringbuffer *b, char *c) {
   b->previous = *c;
 
   // if we are at the end of the loaded range
-  if (b->position == b->last_position) {
+  if (b->position == lookahead_limit(b)) {
     // the start  of the next  batch is  the character after  the last
     // currently valid, potentially wrapped around!
     size_t next_index = (b->last_position + 1) % BUFFER_SIZE;

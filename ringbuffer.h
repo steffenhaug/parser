@@ -65,6 +65,8 @@ int free_ringbuffer(ringbuffer *b);
 int bgetch(ringbuffer *b, char *c);
 // put the next character in c
 
+size_t lookahead_limit(ringbuffer *b);
+
 char look_ahead(ringbuffer *b, size_t i);
 // return the character i positions after the current
 // look_ahead(&b 0) yields the character that comes from

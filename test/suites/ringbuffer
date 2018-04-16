@@ -141,8 +141,11 @@ suite(ringbuffer, {
 	error_code = init_filebuffer(&b, "rbuf_lookahead_and_cursor");
 	assert(!error_code);
 
-	printf("last pos: %zu\n", b.last_position);
-	printf("lim: %d\n",lookahead_limit(&b));
+#define status						\
+	printf("last pos: %zu, lim: %zu, pos: %zu.\n",	\
+	       b.last_position,				\
+	       lookahead_limit(&b),			\
+	       b.position);
 
 	assert(look_ahead(&b, 0) == '1');
 	assert(look_ahead(&b, 1) == '2');
@@ -152,12 +155,43 @@ suite(ringbuffer, {
 	error_code = bgetch(&b, &c);
 	assert(!error_code);
 	assert(c == '1');
+	status;
 
 	assert(look_ahead(&b, 0) == '2');
 	assert(look_ahead(&b, 1) == '3');
 	assert(look_ahead(&b, 2) == '\n');
 	assert(look_ahead(&b, 3) == 'a');
+
+	error_code = bgetch(&b, &c);
+	assert(!error_code);
+	assert(c == '2');
+	status;
+
+	assert(look_ahead(&b, 0) == '3');
+	assert(look_ahead(&b, 1) == '\n');
+	assert(look_ahead(&b, 2) == 'a');
+	assert(look_ahead(&b, 3) == 'b');
 	
+	error_code = bgetch(&b, &c);
+	assert(!error_code);
+	assert(c == '3');
+	status; // last pos: 7, lim: 3, pos: 3
+
+	assert(look_ahead(&b, 0) == '\n');
+	assert(look_ahead(&b, 1) == 'a');
+	assert(look_ahead(&b, 2) == 'b');
+	assert(look_ahead(&b, 3) == 'c');
+	
+	// here we expect the buffer to advance
+	error_code = bgetch(&b, &c);
+	assert(!error_code);
+	assert(c == '\n');
+	status; // last pos: 7, lim: 3, pos: 3
+
+	assert(look_ahead(&b, 0) == 'a');
+	assert(look_ahead(&b, 1) == 'b');
+	assert(look_ahead(&b, 2) == 'c');
+	assert(look_ahead(&b, 3) == '\n');
 	
 	free_ringbuffer(&b);
     });
@@ -174,6 +208,7 @@ suite(ringbuffer, {
     });
     
 })
+#undef status
 
 /* Local Variables:  */
 /* mode: c           */
