@@ -19,6 +19,7 @@
 #include "../lexer.h"
 #include "../parser.h"
 #include "../ast.h"
+#include "../common.h"
 
 #include "suites/ringbuffer"
 #include "suites/lexer"
@@ -26,9 +27,14 @@
 #include "suites/ast"
 
 int main() {
+  printf("\n"
+	 "\n"
+	 "Parser Test\n"
+	 "===========\n"
+	 );
   test(ringbuffer);
-  test(lexer);
-  test(ast);
-  test(parser);
+  //test(lexer);
+  //test(ast);
+  //test(parser);
   return 0;
 }

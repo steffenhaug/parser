@@ -1,4 +1,4 @@
-CFILES = ringbuffer.c lexer.c parser.c ast.c
+CFILES = ringbuffer.c lexer.c parser.c ast.c common.c
 
 debug:
 	clang -o parser.out main.c $(CFILES)

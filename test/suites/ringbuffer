@@ -89,7 +89,10 @@ suite(ringbuffer, {
     
     unit("lookahead (string)", {
 	ringbuffer b;
-	init_stringbuffer(&b, "abc");
+	int error_code = 0;
+
+	error_code = init_stringbuffer(&b, "abc");
+	assert(!error_code);
 
 	assert(look_ahead(&b, 0) == 'a');
 	assert(look_ahead(&b, 1) == 'b');
@@ -98,28 +101,21 @@ suite(ringbuffer, {
 	free_ringbuffer(&b);
     });
 
-    unit("lookahead (file)", {
+    unit("column and line tracking (string)", {
 	ringbuffer b;
-	init_stringbuffer(&b, "abc");
-
-	assert(look_ahead(&b, 0) == 'a');
-	assert(look_ahead(&b, 1) == 'b');
-	assert(look_ahead(&b, 2) == 'c');
-	
-	free_ringbuffer(&b);
-    });
-    
-    unit("column and line tracking", {
-	ringbuffer b;
-	init_stringbuffer(&b,
+	int error_code = 0;
+	error_code = init_stringbuffer(&b,
 			  "abc\n"
 			  "def\n"
 			  "ghi\n");
+
+	assert(!error_code);
 
 	char x;
 	for (int j = 1; j <= 3; j++) {
 	  for (int i = 1; i <= 4; i++) {
 	    bgetch(&b, &x);
+	    printf("%zu, %zu. %d, %d\n", b.column, b.line, i, j);
 	    assert(b.column == i);
 	    assert(b.line == j);
 	  }
@@ -137,6 +133,46 @@ suite(ringbuffer, {
 	free_ringbuffer(&b);
     });
 
+    unit("lookahead (file)", {
+	ringbuffer b;
+	int error_code = 0;
+	char c;
+
+	error_code = init_filebuffer(&b, "rbuf_lookahead_and_cursor");
+	assert(!error_code);
+
+	printf("last pos: %zu\n", b.last_position);
+	printf("lim: %d\n",lookahead_limit(&b));
+
+	assert(look_ahead(&b, 0) == '1');
+	assert(look_ahead(&b, 1) == '2');
+	assert(look_ahead(&b, 2) == '3');
+	assert(look_ahead(&b, 3) == '\n');
+
+	error_code = bgetch(&b, &c);
+	assert(!error_code);
+	assert(c == '1');
+
+	assert(look_ahead(&b, 0) == '2');
+	assert(look_ahead(&b, 1) == '3');
+	assert(look_ahead(&b, 2) == '\n');
+	assert(look_ahead(&b, 3) == 'a');
+	
+	
+	free_ringbuffer(&b);
+    });
+    
+    unit("column and line tracking (file)", {
+	ringbuffer b;
+	init_stringbuffer(&b, "abc");
+
+	assert(look_ahead(&b, 0) == 'a');
+	assert(look_ahead(&b, 1) == 'b');
+	assert(look_ahead(&b, 2) == 'c');
+	
+	free_ringbuffer(&b);
+    });
+    
 })
 
 /* Local Variables:  */

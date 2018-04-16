@@ -14,7 +14,7 @@
  * an abstraction for consuming sequences of characters.
  */
 
-#define BATCH_SIZE 256
+#define BATCH_SIZE 4
 #define BUFFER_SIZE (3 * BATCH_SIZE)
 
 /* Error Codes */

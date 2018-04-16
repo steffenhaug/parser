@@ -1,10 +1,12 @@
 suite(parser, {
     unit("match, LA and LT", {
 	ringbuffer b;
-	init_stringbuffer(&b, "123 456 789");
-	parser p;
-	init_parser(&p, &b);
+	int error_code =  0;
+	error_code = init_stringbuffer(&b, "123 456 789");
+	assert(!error_code);
 
+	parser p;
+	init_parser(&p, &b); 
 	match(&p, LexDecInteger); // match 123
 
 	// look ahead at 456
@@ -21,7 +23,11 @@ suite(parser, {
 
     unit("match_store_value", {
 	ringbuffer b;
-	init_stringbuffer(&b, "123 \"hi\" x true");
+	int error_code = 0;
+
+	error_code = init_stringbuffer(&b, "123 \"hi\" x true");
+	assert(!error_code);
+
 	parser p;
 	init_parser(&p, &b);
 
@@ -53,11 +59,14 @@ suite(parser, {
 
     unit("parse primary expressions", {
 	ringbuffer b;
-	init_stringbuffer(&b,
-			  "true false "
-			  "123 1.2 1.3e-5 "
-			  "x even? \"sample text\" "
-			  "f(x + y, z) A[i - 5, j] ");
+	int error_code = 0;
+	error_code = init_stringbuffer(&b,
+				       "true false "
+				       "123 1.2 1.3e-5 "
+				       "x even? \"sample text\" "
+				       "f(x + y, z) A[i - 5, j] ");
+	assert(!error_code);
+
 	parser p;
 	init_parser(&p, &b);
 
@@ -84,10 +93,13 @@ suite(parser, {
 
     unit("parse math expressions in statements", {
 	ringbuffer b;
-	init_stringbuffer(&b,
-			  "1 + 3 * (5 - 6).\n"
-			  "r mod n.\n"
-			  "--6.\n");
+	int error_code = 0;
+	error_code = init_stringbuffer(&b,
+				       "1 + 3 * (5 - 6).\n"
+				       "r mod n.\n"
+				       "--6.\n");
+	assert(!error_code);
+
 	parser p;
 	init_parser(&p, &b);
 
@@ -125,11 +137,14 @@ suite(parser, {
 
     unit("parse comp/bool expressions in statements", {
 	ringbuffer b;
-	init_stringbuffer(&b,
-			  "a < b.\n"
-			  "x < y < z.\n"
-			  "i < j and true.\n"
-			  "true or (false xor true) and not true.\n");
+	int error_code = 0;
+	error_code = init_stringbuffer(&b,
+				       "a < b.\n"
+				       "x < y < z.\n"
+				       "i < j and true.\n"
+				       "true or (false xor true) and not true.\n");
+	assert(!error_code);
+
 	parser p;
 	init_parser(&p, &b);
 
@@ -171,8 +186,12 @@ suite(parser, {
 
     unit("parse expression list", {
 	ringbuffer b;
-	init_stringbuffer(&b,
-			  "x + y, z, f(x, A[i, j]) ");
+	int error_code = 0;
+	error_code = init_stringbuffer(&b,
+				       "x + y, z, f(x, A[i, j]) ");
+
+	assert(!error_code);
+
 	parser p;
 	init_parser(&p, &b);
 	ast tree;
@@ -187,8 +206,11 @@ suite(parser, {
 
     unit("parse identifier list", {
 	ringbuffer b;
-	init_stringbuffer(&b,
-			  "x, a, norm, even?");
+	int error_code = 0;
+	error_code = init_stringbuffer(&b,
+				       "x, a, norm, even?"
+				       );
+	assert(!error_code);
 	parser p;
 	init_parser(&p, &b);
 	ast tree;
@@ -200,7 +222,60 @@ suite(parser, {
 	free_parser(&p);
 	free_ringbuffer(&b);
     });
+
+    unit("spans", {
+
+#define print_span(N)				\
+	printf("span: (%d, %d) -> (%d, %d)\n",	\
+	       (N)->span.start_line,		\
+	       (N)->span.start_column,		\
+	       (N)->span.end_line,		\
+	       (N)->span.end_column);
+
+#define assert_span_is(S, a, b, c, d)				\
+	assert((S).start_line == (a));				\
+	assert((S).start_column == (b));			\
+	assert((S).end_line == (c));				\
+	assert((S).end_column == (d));				\
+
+	ringbuffer b;
+	int error_code = 0;
+	error_code = init_stringbuffer(&b,
+			  "x + (y - z).\n"
+			  "true and x > y.\n"
+			  "f(x, y, 666).\n"
+			  "A[i, 5].\n"
+			  );
+	assert(!error_code);
+
+	parser p;
+	init_parser(&p, &b);
+
+	ast tree;
+	error_code = parse_root(&p, &tree);
+	assert(!error_code);
+
+	ast *smt0 = child_at(&tree, 0);
+	assert_span_is(smt0->span, 1, 1, 2, 1);
+
+	ast *smt1 = child_at(&tree, 1);
+	assert_span_is(smt1->span, 2, 1, 3, 1);
+
+	ast *smt2 = child_at(&tree, 2);
+	assert_span_is(smt2->span, 3, 1, 4, 1);
+
+	ast *smt3 = child_at(&tree, 3);
+	assert_span_is(smt3->span, 4, 1, 5, 1);
+
+	free_ast(&tree);
+	free_parser(&p);
+	free_ringbuffer(&b);
+
+    });
 })
+
+#undef assert_span_is
+#undef print_span
 
 /* Local Variables:  */
 /* mode: c           */

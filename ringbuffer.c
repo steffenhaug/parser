@@ -1,6 +1,11 @@
 #include <string.h>
 
 #include "ringbuffer.h"
+#include "common.h"
+
+int lookahead_limit(ringbuffer *b) {
+  return mod(b->last_position - BATCH_SIZE, BUFFER_SIZE);
+}
 
 int init_filebuffer(ringbuffer *b, const char *filename) {
   b->type = FileBuffer;
@@ -14,7 +19,7 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
 
   b->position = 0;
 
-  int nread = fread(b->buffer, sizeof(char), BATCH_SIZE, b->source);
+  int nread = fread(b->buffer, sizeof(char), 2 * BATCH_SIZE, b->source);
 
   // we need this special case, since fread() does not read the EOF
   if (nread) {
@@ -38,13 +43,14 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
   return 0;
 }
 
-
 int init_stringbuffer(ringbuffer *b, const char *str) {
   size_t length = strlen(str);
 
-  if (length + 1 > BUFFER_SIZE)
+  if (length + 1 > BUFFER_SIZE) {
+    ringbuffer_error("String is longer than buffer size! (%s)", str);
     return STRING_LONGER_THAN_BUFFER;
-
+  }
+  
   b->type = StringBuffer;
 
   b->filename = "<string buffer>";

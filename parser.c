@@ -11,15 +11,19 @@
 
 int parse_root(parser *p, ast *root) {
   int error_code = 0;
+  int start_line = LA(p, 0)->line;
+  int start_column = LA(p, 0)->column;
+
   init_ast(root, ASTRoot);
 
-  set_span_start(root, LA(p, 0)->line, LA(p, 0)->column);
   while (LT(p, 0) != LexEndOfFile && !error_code) {
     ast stmt;
     error_code = parse_statement(p, &stmt);
 
     push_child(root, stmt);
   }
+
+  set_span_start(root, start_line, start_column);
   set_span_end(root, LA(p, 0)->line, LA(p, 0)->column);
   return error_code;
 }
@@ -31,9 +35,10 @@ int parse_statement(parser *p, ast *stmt) {
   
   // assume, for now, the statement is a simple expression
   parse_expression(p, stmt);
+  match(p, LexStatementTerminator);
+
   set_span_start(stmt, start_line, start_column);
   set_span_end(stmt, LA(p, 0)->line, LA(p, 0)->column);
-  match(p, LexStatementTerminator);
   return error_code;
 }
 
@@ -46,6 +51,7 @@ int parse_identifier_list(parser *p, ast *node) {
   // We don't initialize the node here, because we don't
   // want to reset it! So don't pass an unitiialized node.
   int error_code = 0;
+
   ast tmp;
   while (!error_code) {
     init_ast(&tmp, ASTIdentifier);
@@ -57,14 +63,18 @@ int parse_identifier_list(parser *p, ast *node) {
     if (is_closing_bracket(LT(p, 0)))
       break;
   }
+
   return error_code;
 }
 
 int parse_expression_list(parser *p, ast *node) {
   int error_code = 0;
+  int start_line = LA(p, 0)->line;
+  int start_column = LA(p, 0)->column;
+
   ast tmp;
   while (!error_code) {
-    parse_expression(p, &tmp);
+    error_code = parse_expression(p, &tmp);
     push_child(node, tmp);
     if (LT(p, 0) != LexComma)
       break;
@@ -72,6 +82,7 @@ int parse_expression_list(parser *p, ast *node) {
     if (is_closing_bracket(LT(p, 0)))
       break;
   }
+
   return error_code;
 }
 

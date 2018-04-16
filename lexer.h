@@ -214,7 +214,7 @@
   X(LexGreaterThan, ">")						\
   X(LexLessOrEq, "<=")							\
   X(LexGreaterOrEq, ">=")						\
-    X(LexEquals, "=")							\
+  X(LexEquals, "=")							\
   X(LexDoubleEquals, "==")						\
   X(LexNotEqual, "!=")							\
   X(LexLeftArrow, "<-")							\
@@ -248,7 +248,7 @@
   X(LexOtherwise, "otherwise")						\
   X(LexEndOfFile, "<eof>")						\
   X(LexStatementTerminator, "<.>")
-  
+
 typedef enum {
 #define X(lexeme_name, lexeme_repr) lexeme_name,
   LIST_OF_LEXEMES
