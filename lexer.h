@@ -26,7 +26,7 @@
 #include "ringbuffer.h"
 
 
-// THe maximum stack depth is  also the max length of
+// The maximum stack depth is  also the max length of
 // strings, identifiers and so on.
 #define LEXEME_STACK_DEPTH 512
 

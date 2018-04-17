@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stddef.h>
 
 /* ringbuffer
@@ -14,42 +15,53 @@
  * an abstraction for consuming sequences of characters.
  */
 
+// Smaller batches with -DLIE_DEBUG, so it is easy
+// to test the wrap-around of the buffer without reading
+// a million characters from a big file
+#ifdef LIE_DEBUG
 #define BATCH_SIZE 4
+#else
+#define BATCH_SIZE 128
+#endif // LIE_DEBUG
+
 #define BUFFER_SIZE (3 * BATCH_SIZE)
 
 /* Error Codes */
 #define STRING_LONGER_THAN_BUFFER 201
 #define COULD_NOT_OPEN_FILE 202
 #define ADVANCE_FREE_BUFFER 203
-
-#define ringbuffer_error(message, ...)			     \
-  fprintf(stderr,					     \
-	  "Ringbuffer Error: " message "\n", ##__VA_ARGS__);
-
+#define SOURCE_EXHAUSTED 204
+#define INVALID_BUFFER_TYPE 205
 
 typedef enum {
   StringBuffer,
   FileBuffer,
-  FreeBuffer,
 } buffer_type;
 
 typedef struct {
-  buffer_type type;
-  // If the type is FileBuffer we keep track of the source
-  const char *filename;
-  FILE *source;
-  // Buffer keeps the next few cahracters 
+  FILE *fileptr;
   char buffer[BUFFER_SIZE];
-  // We need the previous character for line breaks
-  char previous;
-  // The position in the buffer (!)
-  size_t position;
-  // The position of the last (valid) character in the buffer
-  size_t last_position;
-  // The position (in the file or string) of 
-  // the previous (!) character
-  size_t line;
-  size_t column;
+} buffered_file;
+
+typedef struct {
+  // Type and name for housekeeping
+  buffer_type type;
+  const char *name;
+  // Whether we have read the entire source or not
+  bool exhausted;
+
+  union {
+    buffered_file as_file;
+    const char *as_str;
+  } source;
+  
+  char at_cursor; // previous
+
+  // The position in the buffer, and the last valid position
+  size_t position, buffer_limit;
+  
+  // The "cursor" (position in the source)
+  size_t line, column;
 } ringbuffer;
 
 int init_filebuffer(ringbuffer *b, const char* filename);
@@ -62,10 +74,8 @@ int free_ringbuffer(ringbuffer *b);
 // Closes the underlying file if the buffer is
 // a FileBuffer. Sets everything to NULL or zero.
 
-int bgetch(ringbuffer *b, char *c);
+int get_character(ringbuffer *b, char *c);
 // put the next character in c
-
-size_t lookahead_limit(ringbuffer *b);
 
 char look_ahead(ringbuffer *b, size_t i);
 // return the character i positions after the current

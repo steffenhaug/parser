@@ -1,13 +1,18 @@
+// I assume a batch size of 4 and a buffer size of 12 in the test
+// refer to ringbuffer.h
+
 suite(ringbuffer, { 
     unit("create buffer from file", {
 	ringbuffer b;
 	init_filebuffer(&b, "numbers.txt");
 
+	printf("batch_size: %d, buffer_size: %d\n", BATCH_SIZE, BUFFER_SIZE);
+	
 	assert(b.type == FileBuffer);
-	assert(b.filename == "numbers.txt");
-	assert(b.source != NULL);
+	assert(b.name == "numbers.txt");
+	assert(b.source.as_file.fileptr != NULL);
 	assert(b.position == 0);
-	assert(b.last_position != 0);
+	assert(b.buffer_limit != 0);
 	assert(b.line == 1);
 	assert(b.column == 0);
 
@@ -20,42 +25,48 @@ suite(ringbuffer, {
 
 	assert(b.type == StringBuffer);
 	// source should be NULL, since the buffer is not a file
-	assert(b.source == NULL);
 	assert(b.position == 0);
 	// last pos. should be 0, because the string is empty
-	assert(b.last_position == 0);
+	assert(b.buffer_limit == 0);
 
 	free_ringbuffer(&b);
     });
     
-    unit("bgetch (from string)", {
+    unit("get_character (from string)", {
 	ringbuffer b;
 	init_stringbuffer(&b, "abc");
 	char x;
 
-	bgetch(&b, &x);
+	get_character(&b, &x);
 	assert(x == 'a');
-	bgetch(&b, &x);
+	get_character(&b, &x);
 	assert(x == 'b');
-	bgetch(&b, &x);
+	get_character(&b, &x);
 	assert(x == 'c');
-	bgetch(&b, &x);
+
+	// we test twice, and completely disregard Humes advice
+	get_character(&b, &x);
+	assert(x == EOF);
+
+	get_character(&b, &x);
 	assert(x == EOF);
 
 	free_ringbuffer(&b);
     });
 
     // if this suddenly broke, make sure the file is still the same :-)
-    unit("bgetch (from file)", {
+    unit("get_character (from file)", {
 	ringbuffer b;
 	init_filebuffer(&b, "numbers.txt");
 	char x;
 
-	bgetch(&b, &x);
+	get_character(&b, &x);
 	assert(x == '0');
-	bgetch(&b, &x);
+
+	get_character(&b, &x);
 	assert(x == ' ');
-	bgetch(&b, &x);
+
+	get_character(&b, &x);
 	assert(x == '1');
 
 	free_ringbuffer(&b);
@@ -67,7 +78,7 @@ suite(ringbuffer, {
 	char x;
 
 	for (int i = 0; i < 25; i++) {
-	  bgetch(&b, &x);
+	  get_character(&b, &x);
 	  assert(x == EOF);
 	}
 	
@@ -80,7 +91,7 @@ suite(ringbuffer, {
 	char x;
 	
 	for (int i = 0; i < 25; i++) {
-	  bgetch(&b, &x);
+	  get_character(&b, &x);
 	  assert(x == EOF);
 	}
 	
@@ -105,17 +116,17 @@ suite(ringbuffer, {
 	ringbuffer b;
 	int error_code = 0;
 	error_code = init_stringbuffer(&b,
-			  "abc\n"
-			  "def\n"
-			  "ghi\n");
+				       "abc\n"
+				       "def\n"
+				       "ghi\n");
 
 	assert(!error_code);
 
 	char x;
 	for (int j = 1; j <= 3; j++) {
 	  for (int i = 1; i <= 4; i++) {
-	    bgetch(&b, &x);
-	    printf("%zu, %zu. %d, %d\n", b.column, b.line, i, j);
+	    get_character(&b, &x);
+	    //printf("%zu, %zu. %d, %d\n", b.column, b.line, i, j);
 	    assert(b.column == i);
 	    assert(b.line == j);
 	  }
@@ -124,8 +135,9 @@ suite(ringbuffer, {
 	// verify that we get EOF forever, and that the line/column
 	// does not move past the first EOF
 	for (int i = 0; i < 25; i++) {
-	  bgetch(&b, &x);
+	  get_character(&b, &x);
 	  assert(x == EOF);
+	  //printf("i: %d, line: %zu, col: %zu\n", i, b.line, b.column);
 	  assert(b.line == 4);
 	  assert(b.column == 1);
 	}
@@ -141,41 +153,32 @@ suite(ringbuffer, {
 	error_code = init_filebuffer(&b, "rbuf_lookahead_and_cursor");
 	assert(!error_code);
 
-#define status						\
-	printf("last pos: %zu, lim: %zu, pos: %zu.\n",	\
-	       b.last_position,				\
-	       lookahead_limit(&b),			\
-	       b.position);
-
 	assert(look_ahead(&b, 0) == '1');
 	assert(look_ahead(&b, 1) == '2');
 	assert(look_ahead(&b, 2) == '3');
 	assert(look_ahead(&b, 3) == '\n');
 
-	error_code = bgetch(&b, &c);
+	error_code = get_character(&b, &c);
 	assert(!error_code);
 	assert(c == '1');
-	status;
 
 	assert(look_ahead(&b, 0) == '2');
 	assert(look_ahead(&b, 1) == '3');
 	assert(look_ahead(&b, 2) == '\n');
 	assert(look_ahead(&b, 3) == 'a');
 
-	error_code = bgetch(&b, &c);
+	error_code = get_character(&b, &c);
 	assert(!error_code);
 	assert(c == '2');
-	status;
 
 	assert(look_ahead(&b, 0) == '3');
 	assert(look_ahead(&b, 1) == '\n');
 	assert(look_ahead(&b, 2) == 'a');
 	assert(look_ahead(&b, 3) == 'b');
 	
-	error_code = bgetch(&b, &c);
+	error_code = get_character(&b, &c);
 	assert(!error_code);
 	assert(c == '3');
-	status; // last pos: 7, lim: 3, pos: 3
 
 	assert(look_ahead(&b, 0) == '\n');
 	assert(look_ahead(&b, 1) == 'a');
@@ -183,10 +186,9 @@ suite(ringbuffer, {
 	assert(look_ahead(&b, 3) == 'c');
 	
 	// here we expect the buffer to advance
-	error_code = bgetch(&b, &c);
+	error_code = get_character(&b, &c);
 	assert(!error_code);
 	assert(c == '\n');
-	status; // last pos: 7, lim: 3, pos: 3
 
 	assert(look_ahead(&b, 0) == 'a');
 	assert(look_ahead(&b, 1) == 'b');
@@ -198,17 +200,13 @@ suite(ringbuffer, {
     
     unit("column and line tracking (file)", {
 	ringbuffer b;
-	init_stringbuffer(&b, "abc");
 
-	assert(look_ahead(&b, 0) == 'a');
-	assert(look_ahead(&b, 1) == 'b');
-	assert(look_ahead(&b, 2) == 'c');
+	assert(false);
 	
 	free_ringbuffer(&b);
     });
     
 })
-#undef status
 
 /* Local Variables:  */
 /* mode: c           */

@@ -1,97 +1,113 @@
 #include <string.h>
 
 #include "ringbuffer.h"
-#include "common.h"
 
-size_t lookahead_limit(ringbuffer *b) {
-  if (b->type == FileBuffer)
-    return mod(b->last_position - BATCH_SIZE, BUFFER_SIZE);
-  else
-    // strings are not buffered, so we need this special case
-    return b->last_position;
+#define ringbuffer_error(message, ...)			     \
+  fprintf(stderr,					     \
+	  "Ringbuffer Error: " message "\n", ##__VA_ARGS__);
+
+#define source_fileptr(buf) ((buf)->source.as_file.fileptr)
+#define source_buffer(buf) ((buf)->source.as_file.buffer)
+
+#define source_string(buf) ((buf)->source.as_str)
+
+int mod(int m, int n) {
+  // imlplements the modulus operator, which wraps
+  // around correctly even when m is negative.
+  return (m % n + n) % n;
+}
+
+void exhaust(ringbuffer *b) {
+    b->exhausted = true;
+}
+
+bool is_exhausted(ringbuffer *b) {
+  return b->exhausted;
+}
+
+size_t read_limit(ringbuffer *b) {
+  // the limit for how far we can read before next batch
+  if (b->type == FileBuffer) {
+    return mod(b->buffer_limit - BATCH_SIZE, BUFFER_SIZE);
+  } else {
+    return b->buffer_limit;
+  }
 }
 
 int init_filebuffer(ringbuffer *b, const char *filename) {
   b->type = FileBuffer;
-
-  b->filename = filename;
-  b->source = fopen(filename, "r");
-  if (b->source == NULL) {
-    ringbuffer_error("Failed to open file! (%s)", filename);
-    return COULD_NOT_OPEN_FILE;
-  }
+  b->name = filename;
+  
+  source_fileptr(b) = fopen(filename, "r");
+  if (source_fileptr(b) == NULL)
+    goto failed_open;
 
   b->position = 0;
 
   // read two batches
-  int nread = fread(b->buffer, sizeof(char), 2 * BATCH_SIZE, b->source);
+  int nread = fread(source_buffer(b), sizeof(char), 2 * BATCH_SIZE,
+		    source_fileptr(b));
 
-  // we need this special case, since fread() does not read the EOF
+  // instantly exhaust buffer if it is empty
   if (nread) {
-    b->last_position = nread - 1;
+    b->buffer_limit = nread - 1;
+    b->exhausted = false;
   } else {
-    // if zero characters are read, last_position would be -1, which
-    // is not a valid array index. last_position is of type size_t,
-    // so -1 overflows and makes a disaster.
-    b->last_position = 0;
-    b->buffer[0] = EOF;
+    b->buffer_limit = 0;
+    exhaust(b);
   }
 
-  b->previous = 0;
+  b->at_cursor = (char) NULL;
 
-  // Line starts at one, column at zero, because
-  // column is incremented immediately as we "advance"
-  // to the first character!
+  // Line  starts  at one,  column  at  zero,  because the  column  is
+  // incremented immediately, as we "advance" to the first character!
   b->line = 1;
   b->column = 0;
 
   return 0;
+
+ failed_open:
+  ringbuffer_error("Failed to open file! (%s)", filename);
+  free_ringbuffer(b);
+  return COULD_NOT_OPEN_FILE;
 }
 
 int init_stringbuffer(ringbuffer *b, const char *str) {
   size_t length = strlen(str);
 
-  if (length + 1 > BUFFER_SIZE) {
-    ringbuffer_error("String is longer than buffer size! (%s)", str);
-    return STRING_LONGER_THAN_BUFFER;
-  }
-  
   b->type = StringBuffer;
+  b->name = "<string buffer>";
+  b->exhausted = false;
 
-  b->filename = "<string buffer>";
-  b->source = NULL;
-
-  strcpy(b->buffer, str);
-  b->buffer[length] = EOF;
-  b->previous = 0;
-
+  source_string(b) = str;
+  b->at_cursor = (char) NULL;
+  
   b->position = 0;
-  b->last_position = length;
 
-  // Line starts at one, column at zero, because
-  // column is incremented immediately as we "advance"
-  // to the first character!
+  if (length) {
+    b->buffer_limit = length - 1;
+    b->exhausted = false;
+  } else {
+    b->buffer_limit = 0;
+    exhaust(b);
+  }
+
   b->line = 1;
   b->column = 0;
   return 0;
 }
 
 int free_ringbuffer(ringbuffer *b) {
-  b->type = FreeBuffer;
-  b->filename = "<free buffer>";
-  if (b->source != NULL) {
-    fclose(b->source);
-    b->source = NULL;
+  if (b->type == FileBuffer) {
+    fclose(source_fileptr(b));
+    b->source.as_file.fileptr = NULL;
   }
 
-  for (int i = 0; i < BUFFER_SIZE; i++)
-    b->buffer[i] = 0;
-
-  b->previous = 0;
+  memset(source_buffer(b), 0, BUFFER_SIZE);
+  b->at_cursor = 0;
 
   b->position = 0;
-  b->last_position = 0;
-
+  b->buffer_limit = 0;
   b->line = 0;
   b->column = 0;
   return 0;
@@ -99,64 +115,55 @@ int free_ringbuffer(ringbuffer *b) {
 
 
 int advance_filebuffer(ringbuffer *b, char *c) {
-  if (b->source == NULL) {
-    *c = EOF;
-  } else {
-    *c = b->buffer[b->position];
-  }
-  b->previous = *c;
+  if (b->position > b->buffer_limit)
+    goto exhaust_buffer;
 
-  // if we are at the end of the loaded range
-  if (b->position == lookahead_limit(b)) {
-    // the start  of the next  batch is  the character after  the last
-    // currently valid, potentially wrapped around!
-    size_t next_index = (b->last_position + 1) % BUFFER_SIZE;
-    char *next_start = &b->buffer[next_index];
+  *c = source_buffer(b)[b->position];
+  b->at_cursor = *c;
 
-    // read one batch from the source, into the buffer, starting at
-    // the position 'next_start'.
-    int nread = fread(next_start, sizeof(char), BATCH_SIZE, b->source);
 
-    // move the position of the last element
-    b->last_position = (b->last_position + nread) % BUFFER_SIZE;
+  if (b->position == read_limit(b)) {
+    size_t next_index = mod(b->buffer_limit + 1, BUFFER_SIZE);
+    char *next_start = &source_buffer(b)[next_index];
 
-    // if we can't read more (nread == 0), we are done.
-    // we close the file, and upon further calls we detect
-    // this, and return EOF forever.
-    if (nread == 0) {
-      fclose(b->source);
-      b->source = NULL;
-    }
+    int nread = fread(next_start, sizeof(char), BATCH_SIZE,
+		      source_fileptr(b));
+
+    b->buffer_limit = mod(b->buffer_limit + nread, BUFFER_SIZE);
   }
 
-  b->position = (b->position + 1) % BUFFER_SIZE;
+  b->position = mod(b->position + 1, BUFFER_SIZE);
 
+  return 0;
+
+ exhaust_buffer:
+  exhaust(b);
+  *c = EOF;
   return 0;
 }
 
 int advance_stringbuffer(ringbuffer *b, char *c) {
-  if (b->position > b->last_position) {
-    *c = EOF;
-  } else {
-    *c = b->buffer[b->position];
-  }
-  b->previous = *c;
+  if (b->position > b->buffer_limit)
+    goto exhaust_buffer;
+
+  *c = source_string(b)[b->position];
   b->position++;
+
+  b->at_cursor = *c;
+
+  return 0;
+
+ exhaust_buffer:
+  exhaust(b);
+  *c = EOF;
   return 0;
 }
 
-int bgetch(ringbuffer *b, char *c) {
-  int error_code;
+int get_character(ringbuffer *b, char *c) {
+  if (is_exhausted(b))
+    goto exhausted;
 
-  // yield EOF forever after the end of the stream
-  if (b->previous == EOF) {
-    *c = EOF;
-    return 0;
-  }
-
-  // if the previous character was a line break, this
-  // character is on the beginning of a new line
-  if (b->previous == '\n') {
+  if (b->at_cursor == '\n') {
     b->line++;
     b->column = 1;
   } else {
@@ -165,26 +172,48 @@ int bgetch(ringbuffer *b, char *c) {
 
   switch (b->type) {
   case FileBuffer:
-    error_code = advance_filebuffer(b, c);
-    break;
+    return advance_filebuffer(b, c);
   case StringBuffer:
-    error_code = advance_stringbuffer(b, c);
-    break;
-  case FreeBuffer:
-    ringbuffer_error("Attempt to advance a freed buffer!");
-    error_code = ADVANCE_FREE_BUFFER;
+    return advance_stringbuffer(b, c);
+  default:
+    goto invalid_buffer_type;
   }
 
-  return error_code;
+ exhausted:
+  *c = EOF;
+  return SOURCE_EXHAUSTED;
+
+ invalid_buffer_type:
+  *c = (char) NULL;
+  ringbuffer_error("Invalid buffer type! You probably forgot to initialize it. (type: %d)", b->type);
+  return INVALID_BUFFER_TYPE;
 }
 
 char look_ahead(ringbuffer *b, size_t i) {
+  if (i > BATCH_SIZE)
+    goto looked_too_far;
+
   size_t target = b->position + i;
-  if (target > b->last_position) {
-    if (b->source != NULL)
-      ringbuffer_error("Tried to look outside buffer!");
-    return EOF;
-  } else {
-    return b->buffer[target];
+  if (target > b->buffer_limit)
+    goto looked_past_end;
+
+  switch (b->type) {
+  case FileBuffer:
+    return source_buffer(b)[target];
+  case StringBuffer:
+    return source_string(b)[target];
+  default:
+    goto invalid_buffer_type;
   }
+
+ invalid_buffer_type:
+  ringbuffer_error("Invalid buffer type! You probably forgot to initialize it. (type: %d)", b->type);
+  return (char) NULL;
+
+ looked_too_far:
+  ringbuffer_error("Tried to look outside buffer! (buffer name: %s)", b->name);
+  return EOF;
+
+ looked_past_end:
+  return EOF;
 }

@@ -68,7 +68,7 @@ lexeme_class id_or_keyword(const char *contents) {
 #undef check
 }
 
-#define munch bgetch(input, &munched[++stackp])
+#define munch get_character(input, &munched[++stackp])
 // Pull a new character from the input stream.
 
 #define drop stackp--
@@ -113,7 +113,7 @@ int scan(ringbuffer *input, lexeme *l) {
  start:
   // prepare the stack
   stackp = 0;
-  bgetch(input, &munched[stackp]);
+  get_character(input, &munched[stackp]);
   // record the start column in the input
   munch_start = input->column;
   switch (last_munched) {
