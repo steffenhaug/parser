@@ -155,6 +155,7 @@ int parse_primary_expression(parser *p, ast *expr) {
   // Parse "trailing bit" ([...] or (...)) if there is one
   switch (LT(p, 0)) {
   case LexLeftParenthesis:
+    // parse argument vector
     match(p, LexLeftParenthesis);
     init_ast(expr, ASTCall);
     push_child(expr, tmp);
@@ -162,11 +163,22 @@ int parse_primary_expression(parser *p, ast *expr) {
     match(p, LexRightParenthesis);
     break;
   case LexLeftSquareBracket:
+    // parse subscript
     match(p, LexLeftSquareBracket);
     init_ast(expr, ASTSubscript);
     push_child(expr, tmp);
     parse_expression_list(p, expr);
     match(p, LexRightSquareBracket);
+    break;
+  case LexDot:
+    // parse member indexing
+    match(p, LexDot);
+    init_ast(expr, ASTMember);
+    push_child(expr, tmp);
+    ast id;
+    init_ast(&id, ASTIdentifier);
+    match_store_value(p, LexIdentifier, &id);
+    push_child(expr, id);
     break;
   default:
     *expr = tmp;

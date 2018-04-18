@@ -133,6 +133,7 @@ char *ast_class_tostr(ast_class cls) {
 
     becomes(ASTCall, "call");
     becomes(ASTSubscript, "subscript");
+    becomes(ASTMember, "member");
   default:
     return "<cannot represent>";
   }
