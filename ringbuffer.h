@@ -55,7 +55,9 @@ typedef struct {
     const char *as_str;
   } source;
   
-  char at_cursor; // previous
+  // character "underneath the cursor",
+  // i.e. the previous characrer read
+  char at_cursor;
 
   // The position in the buffer, and the last valid position
   size_t position, buffer_limit;

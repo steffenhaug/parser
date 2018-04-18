@@ -102,12 +102,26 @@ suite(ringbuffer, {
 	ringbuffer b;
 	int error_code = 0;
 
-	error_code = init_stringbuffer(&b, "abc");
+	error_code = init_stringbuffer(&b, "123abcqwe\n");
 	assert(!error_code);
 
-	assert(look_ahead(&b, 0) == 'a');
-	assert(look_ahead(&b, 1) == 'b');
-	assert(look_ahead(&b, 2) == 'c');
+	char expected[] = {
+	  '1', '2', '3', 'a', 'b', 'c', 'q', 'w', 'e', '\n', EOF, EOF, EOF,
+	};
+
+	char c;
+	for (int i = 0; i < 11; i++) {
+	  /* printf("%d ", look_ahead(&b, 0)); */
+	  /* printf("%d ", look_ahead(&b, 1)); */
+	  /* printf("%d, exh? %s, positions: %zu %zu %zu, %d. \n", */
+	  /* 	 look_ahead(&b, 2), b.exhausted? "true" : "false", */
+	  /* 	 b.position, b.buffer_limit, b.column, i); */
+
+	  assert(look_ahead(&b, 0) == expected[i]);
+	  assert(look_ahead(&b, 1) == expected[i + 1]);
+	  assert(look_ahead(&b, 2) == expected[i + 2]);
+	  get_character(&b, &c);
+	}
 	
 	free_ringbuffer(&b);
     });
@@ -126,7 +140,7 @@ suite(ringbuffer, {
 	for (int j = 1; j <= 3; j++) {
 	  for (int i = 1; i <= 4; i++) {
 	    get_character(&b, &x);
-	    //printf("%zu, %zu. %d, %d\n", b.column, b.line, i, j);
+	    /* printf("%zu, %zu. %d, %d, %c\n", b.column, b.line, i, j, x == '\n' ? 'x' : x); */
 	    assert(b.column == i);
 	    assert(b.line == j);
 	  }
@@ -137,9 +151,39 @@ suite(ringbuffer, {
 	for (int i = 0; i < 25; i++) {
 	  get_character(&b, &x);
 	  assert(x == EOF);
-	  //printf("i: %d, line: %zu, col: %zu\n", i, b.line, b.column);
+	  /* printf("i: %d, line: %zu, col: %zu\n", i, b.line, b.column); */
 	  assert(b.line == 4);
 	  assert(b.column == 1);
+	}
+
+	free_ringbuffer(&b);
+    });
+
+    unit("column tracking (string)", {
+	// we need to test the case where the line and column should *not* be
+	// reset after it is exhausted, i.e. the input does not end with '\n'
+	ringbuffer b;
+	int error_code = 0;
+	error_code = init_stringbuffer(&b, "abcdefg");
+
+	assert(!error_code);
+
+	char x;
+	for (int j = 1; j <= 7; j++) {
+	  get_character(&b, &x);
+	  /* printf("%zu, %zu. %d, %c\n", b.column, b.line, j, x == '\n' ? 'x' : x); */
+	  assert(b.line == 1);
+	  assert(b.column == j);
+	}
+
+	// verify that we get EOF forever, and that the line/column
+	// does not move past the first EOF
+	for (int i = 0; i < 25; i++) {
+	  get_character(&b, &x);
+	  assert(x == EOF);
+	  /* printf("i: %d, line: %zu, col: %zu\n", i, b.line, b.column); */
+	  assert(b.line == 1);
+	  assert(b.column == 8);
 	}
 
 	free_ringbuffer(&b);
@@ -148,61 +192,56 @@ suite(ringbuffer, {
     unit("lookahead (file)", {
 	ringbuffer b;
 	int error_code = 0;
+
+	error_code = init_filebuffer(&b, "lookahead.txt");
+	assert(!error_code);
+
+	char expected[] = {
+	  '1', '2', '3', 'a', 'b', 'c', 'q', 'w', 'e', '\n', EOF, EOF, EOF,
+	};
+
 	char c;
-
-	error_code = init_filebuffer(&b, "rbuf_lookahead_and_cursor");
-	assert(!error_code);
-
-	assert(look_ahead(&b, 0) == '1');
-	assert(look_ahead(&b, 1) == '2');
-	assert(look_ahead(&b, 2) == '3');
-	assert(look_ahead(&b, 3) == '\n');
-
-	error_code = get_character(&b, &c);
-	assert(!error_code);
-	assert(c == '1');
-
-	assert(look_ahead(&b, 0) == '2');
-	assert(look_ahead(&b, 1) == '3');
-	assert(look_ahead(&b, 2) == '\n');
-	assert(look_ahead(&b, 3) == 'a');
-
-	error_code = get_character(&b, &c);
-	assert(!error_code);
-	assert(c == '2');
-
-	assert(look_ahead(&b, 0) == '3');
-	assert(look_ahead(&b, 1) == '\n');
-	assert(look_ahead(&b, 2) == 'a');
-	assert(look_ahead(&b, 3) == 'b');
-	
-	error_code = get_character(&b, &c);
-	assert(!error_code);
-	assert(c == '3');
-
-	assert(look_ahead(&b, 0) == '\n');
-	assert(look_ahead(&b, 1) == 'a');
-	assert(look_ahead(&b, 2) == 'b');
-	assert(look_ahead(&b, 3) == 'c');
-	
-	// here we expect the buffer to advance
-	error_code = get_character(&b, &c);
-	assert(!error_code);
-	assert(c == '\n');
-
-	assert(look_ahead(&b, 0) == 'a');
-	assert(look_ahead(&b, 1) == 'b');
-	assert(look_ahead(&b, 2) == 'c');
-	assert(look_ahead(&b, 3) == '\n');
+	for (int i = 0; i < 11; i++) {
+	  /* printf("%d ", look_ahead(&b, 0)); */
+	  /* printf("%d ", look_ahead(&b, 1)); */
+	  /* printf("%d , exh? %s, positions: %zu %zu %zu, \n", */
+	  /* 	 look_ahead(&b, 2), */
+	  /* 	 b.exhausted? "true" : "false", */
+	  /* 	 b.position, b.buffer_limit, b.column */
+	  /* 	 ); */
+	  assert(look_ahead(&b, 0) == expected[i]);
+	  assert(look_ahead(&b, 1) == expected[i + 1]);
+	  assert(look_ahead(&b, 2) == expected[i + 2]);
+	  get_character(&b, &c);
+	}
 	
 	free_ringbuffer(&b);
     });
     
     unit("column and line tracking (file)", {
 	ringbuffer b;
+	int error_code = 0;
+	char x;
 
-	assert(false);
-	
+	error_code = init_filebuffer(&b, "buffer_cursor.txt");
+	assert(!error_code);
+
+	for (int j = 1; j <= 4; j++) {
+	  for (int i = 1; i <= 8; i++) {
+	    get_character(&b, &x);
+	    /* printf("%c: %zu, %zu. loop: %d, %d\n", x, b.column, b.line, i, j); */
+	    assert(b.column == i);
+	    assert(b.line == j);
+	  }
+	}
+
+	for (int i = 0; i < 25; i++) {
+	  get_character(&b, &x);
+	  assert(x == EOF);
+	  assert(b.line == 5);
+	  assert(b.column == 1);
+	}
+
 	free_ringbuffer(&b);
     });
     

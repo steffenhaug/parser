@@ -11,9 +11,9 @@
 
 #define source_string(buf) ((buf)->source.as_str)
 
+// imlplements the modulus operator, which wraps
+// around correctly even when m is negative.
 int mod(int m, int n) {
-  // imlplements the modulus operator, which wraps
-  // around correctly even when m is negative.
   return (m % n + n) % n;
 }
 
@@ -27,11 +27,18 @@ bool is_exhausted(ringbuffer *b) {
 
 size_t read_limit(ringbuffer *b) {
   // the limit for how far we can read before next batch
-  if (b->type == FileBuffer) {
+  switch (b->type) {
+  case FileBuffer:
     return mod(b->buffer_limit - BATCH_SIZE, BUFFER_SIZE);
-  } else {
+  case StringBuffer:
     return b->buffer_limit;
+  default:
+    goto invalid_buffer_type;
   }
+
+ invalid_buffer_type:
+  ringbuffer_error("Invalid buffer type! You probably forgot to initialize it. (type: %d)", b->type);
+  return 0;
 }
 
 int init_filebuffer(ringbuffer *b, const char *filename) {
@@ -73,17 +80,15 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
 }
 
 int init_stringbuffer(ringbuffer *b, const char *str) {
-  size_t length = strlen(str);
-
   b->type = StringBuffer;
   b->name = "<string buffer>";
-  b->exhausted = false;
 
   source_string(b) = str;
   b->at_cursor = (char) NULL;
   
   b->position = 0;
 
+  size_t length = strlen(str);
   if (length) {
     b->buffer_limit = length - 1;
     b->exhausted = false;
@@ -115,60 +120,47 @@ int free_ringbuffer(ringbuffer *b) {
 
 
 int advance_filebuffer(ringbuffer *b, char *c) {
-  if (b->position > b->buffer_limit)
-    goto exhaust_buffer;
-
   *c = source_buffer(b)[b->position];
   b->at_cursor = *c;
 
+  if (b->position == b->buffer_limit)
+    exhaust(b);
 
   if (b->position == read_limit(b)) {
+    // get a pointer into the buffer
     size_t next_index = mod(b->buffer_limit + 1, BUFFER_SIZE);
     char *next_start = &source_buffer(b)[next_index];
 
-    int nread = fread(next_start, sizeof(char), BATCH_SIZE,
-		      source_fileptr(b));
+    int nread = fread(next_start, sizeof(char), BATCH_SIZE, source_fileptr(b));
 
     b->buffer_limit = mod(b->buffer_limit + nread, BUFFER_SIZE);
   }
 
   b->position = mod(b->position + 1, BUFFER_SIZE);
-
-  return 0;
-
- exhaust_buffer:
-  exhaust(b);
-  *c = EOF;
   return 0;
 }
 
 int advance_stringbuffer(ringbuffer *b, char *c) {
-  if (b->position > b->buffer_limit)
-    goto exhaust_buffer;
-
   *c = source_string(b)[b->position];
-  b->position++;
-
   b->at_cursor = *c;
 
-  return 0;
+  if (b->position == b->buffer_limit)
+    exhaust(b);
 
- exhaust_buffer:
-  exhaust(b);
-  *c = EOF;
+  b->position++;
   return 0;
 }
 
 int get_character(ringbuffer *b, char *c) {
-  if (is_exhausted(b))
-    goto exhausted;
-
   if (b->at_cursor == '\n') {
     b->line++;
     b->column = 1;
-  } else {
+  } else if (b->at_cursor != EOF) {
     b->column++;
   }
+  
+  if (is_exhausted(b))
+    goto exhausted;
 
   switch (b->type) {
   case FileBuffer:
@@ -181,10 +173,12 @@ int get_character(ringbuffer *b, char *c) {
 
  exhausted:
   *c = EOF;
+  b->at_cursor = EOF;
   return SOURCE_EXHAUSTED;
 
  invalid_buffer_type:
   *c = (char) NULL;
+  b->at_cursor = (char) NULL;
   ringbuffer_error("Invalid buffer type! You probably forgot to initialize it. (type: %d)", b->type);
   return INVALID_BUFFER_TYPE;
 }
