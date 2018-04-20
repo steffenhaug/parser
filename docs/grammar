@@ -57,6 +57,7 @@ primary
 trailer
     : '[' exprlist ']'
     | '(' exprlist ')'
+    | '.' ID
     ;
 
 power

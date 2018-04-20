@@ -4,6 +4,10 @@
 
 #include "parser.h"
 
+#define parser_error(message, ...)			     \
+  fprintf(stderr,					     \
+	  "Parser Error: " message "\n", ##__VA_ARGS__);
+
 /*
  * Recursive Descent Functions
  * ===========================
@@ -138,8 +142,7 @@ int parse_atom(parser *p, ast *atom) {
     error_code = match_store_value(p, LexString, atom);
     break;
   default:
-    parser_error("Expected atomic value, found %s. "
-		 "(line: %zu, column: %zu)",
+    parser_error("Expected atomic value, found %s. (line: %zu, column: %zu)",
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);
@@ -152,7 +155,7 @@ int parse_primary_expression(parser *p, ast *expr) {
   int error_code = 0;
   ast tmp;
   error_code = parse_atom(p, &tmp);
-  // Parse "trailing bit" ([...] or (...)) if there is one
+  // Parse "trailing bit":
   switch (LT(p, 0)) {
   case LexLeftParenthesis:
     // parse argument vector
@@ -396,9 +399,6 @@ int parse_and_expr(parser *p, ast *expr) {
 }
 
 int parse_or_expr(parser *p, ast *expr) {
-  // Or expressions are the "starting point" for
-  // every single operatpr expression, because they
-  // have the lowest prescedence.
   int error_code = 0;
 
   ast left, right, tmp;
@@ -431,17 +431,10 @@ int parse_or_expr(parser *p, ast *expr) {
 
 int parse_expression(parser *p, ast *expr) {
   int error_code = 0;
-
+  // assume it is an arithmetic expression
   error_code = parse_or_expr(p, expr);
   return error_code;
 }
-
-/*
- * Parser Management
- * =================
- * advance, match, LA and LT are used to "encode the
- * grammar" in a recursive descent parser.
- */
 
 int advance(parser *p) {
   // Free the previous lexeme
@@ -539,8 +532,7 @@ int match_store_value(parser *p, lexeme_class cls, ast *node) {
     break;
   }
   default:
-    parser_error("Expected lexeme with value. Found %s. "
-		 "(line: %zu, column: %zu)",
+    parser_error("Expected lexeme with value. Found %s. (line: %zu, column: %zu)",
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);

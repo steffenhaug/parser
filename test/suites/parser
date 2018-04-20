@@ -64,7 +64,7 @@ suite(parser, {
 				       "true false "
 				       "123 1.2 1.3e-5 "
 				       "x even? \"sample text\" "
-				       "f(x + y, z) A[i - 5, j] ");
+				       "f(x + y, z) A[i - 5, j] A.x");
 	assert(!error_code);
 
 	parser p;
@@ -72,11 +72,11 @@ suite(parser, {
 
 	ast tree;
 
-	int number_of_trees = 10;
+	int number_of_trees = 11;
 	ast_class expected_types[] = {
 	  ASTBool, ASTBool, ASTInteger, ASTFloat, ASTFloat,
 	  ASTIdentifier, ASTIdentifier, ASTString,
-	  ASTCall, ASTSubscript,
+	  ASTCall, ASTSubscript, ASTMember,
 	};
 
 	for (int i = 0; i < number_of_trees; i++) {
