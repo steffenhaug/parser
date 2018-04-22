@@ -5,17 +5,15 @@
 #include "ringbuffer.h"
 #include "lexer.h"
 
-
-/* Lexer Error 
- * ===========
- */
-#define lexer_error(message, ...)			       \
+// Note that this is distinct from lexer_error, which is specifically
+// for errors in the lexer state machine.
+#define lexeme_error(message, ...)			       \
   fprintf(stderr,					       \
-	  "Lexer Error: " message " (line %ld, column %ld)\n", \
-	  ##__VA_ARGS__, input->line, input->column);	       
+	  "Lexeme Error: " message "\n", \
+	  ##__VA_ARGS__);	       
 
 int init_lexeme(lexeme *l, lexeme_class cls, const char *content,
-		int line, int column) {
+		size_t line, size_t column) {
   l->type = cls;
   l->line = line;
   l->column = column;
@@ -26,25 +24,39 @@ int init_lexeme(lexeme *l, lexeme_class cls, const char *content,
     int size_of_content = strlen(content) + 1;
     l->content = (char *) malloc(size_of_content);
     if (l->content == NULL)
-      return 1;
-
+      goto failed_malloc;
     strcpy(l->content, content);
   }
+
   return 0;
+
+ failed_malloc:
+  lexeme_error("Failed to allocate memory for content! (content = %s on line %zu, col %zu)",
+	       content, line, column);
+  return FAILED_MALLOC_CONTENT;
 }
 
 int free_lexeme(lexeme *l) {
   if (l == NULL)
-    return FREE_NULL_LEXEME;
+    goto tried_free_null;
 
   free(l->content);
   l->line = 0;
   l->column = 0;
   l->content = NULL;
+
   return 0;
+
+ tried_free_null:
+  lexeme_error("Tried to free NULL.");
+  return FREE_NULL_LEXEME;
 }
 
 lexeme_class id_or_keyword(const char *contents) {
+  /* Returns the lexeme class corresponding to the string.
+   * If the string does not match a keyword, the identifier class
+   * is returned. 
+   */
 #define check(str, id) if (strcmp(contents, str) == 0) return id
   check("mod", LexMod);
   check("func", LexFunc);
@@ -54,7 +66,6 @@ lexeme_class id_or_keyword(const char *contents) {
   check("let", LexLet);
   check("if", LexIf);
   check("else", LexElse);
-  check("where", LexWhere);
   check("cases", LexCases);
   check("otherwise", LexOtherwise);
   check("not", LexNot);
@@ -63,10 +74,15 @@ lexeme_class id_or_keyword(const char *contents) {
   check("xor", LexXor);
   check("true", LexTrue);
   check("false", LexFalse);
-  // if none of the above matches, the string is not a reserved keyword
-  return LexIdentifier;
 #undef check
+  return LexIdentifier;
 }
+
+int scan(ringbuffer *input, lexeme *l) {
+#define lexer_error(message, ...)			       \
+  fprintf(stderr,					       \
+	  "Lexer Error: " message " (line %ld, column %ld)\n", \
+	  ##__VA_ARGS__, input->line, input->column);	       
 
 #define munch get_character(input, &munched[++stackp])
 // Pull a new character from the input stream.
@@ -91,7 +107,6 @@ lexeme_class id_or_keyword(const char *contents) {
   return 0
 // Initializes the lexeme just scanned, and *copies* 'munched' to its content.
 
-int scan(ringbuffer *input, lexeme *l) {
   char munched[LEXEME_STACK_DEPTH];
   int stackp;
   int munch_start;
@@ -439,11 +454,15 @@ int scan(ringbuffer *input, lexeme *l) {
   switch (look_ahead(input, 0)) {
   case ALPHANUMERIC:
   case '_':
-    // Alphanumberic characters (a-z,A-Z,0-9) and _ can follow
+  case '-': // we want these to allow functions such as str->int(string s)
+  case '>':
+  case '<':
+    // Alphanumberic characters (a-z,A-Z,0-9) and _,-,< or > can follow
     // the first character in an identifier.
     munch;
     goto scan_identifier;
   case '?':
+  case '!':
     // A question mark is legal on the end, so don't spit
     // it out! It is only legal as the last character, however,
     // so we stop searching here.
@@ -452,7 +471,7 @@ int scan(ringbuffer *input, lexeme *l) {
   default:
     yield_value(id_or_keyword(munched));
   }
-}
+#undef lexer_error
 #undef munch
 #undef drop
 #undef push
@@ -460,8 +479,9 @@ int scan(ringbuffer *input, lexeme *l) {
 #undef last_munched
 #undef yield
 #undef yield_eof
+}
 
-const char* lexeme_class_tostr(lexeme_class cls) {
+const char *lexeme_class_tostr(lexeme_class cls) {
   switch (cls) {
 #define X(lclass, lrepr) case lclass: return lrepr;
     LIST_OF_LEXEMES

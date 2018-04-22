@@ -230,13 +230,13 @@ suite(lexer, {
 	lexeme l;
 	int error_code = 0;
 
-	error_code = init_stringbuffer(&b, "x norm even? _vX2");
+	error_code = init_stringbuffer(&b, "x norm even? _vX2 str->int");
 	assert(!error_code);
 
-	int number_of_lexemes = 4;
+	int number_of_lexemes = 5;
 
 	const char *expected_content[] = {
-	  "x", "norm", "even?", "_vX2",
+	  "x", "norm", "even?", "_vX2", "str->int",
 	};
 
 	for (int i = 0; i < number_of_lexemes; i++) {
@@ -262,16 +262,16 @@ suite(lexer, {
 
 	error_code = init_stringbuffer(&b,
 			  "mod func fn use as "
-			  "let where if else cases otherwise "
+			  "let if else cases otherwise "
 			  "and or xor true false ");
 
 	assert(!error_code);
 	
-	int number_of_lexemes = 16;
+	int number_of_lexemes = 15;
 
 	lexeme_class expected_types[] = {
 	  LexMod, LexFunc, LexFn, LexUse, LexAs,
-	  LexLet, LexWhere, LexIf, LexElse, LexCases, LexOtherwise,
+	  LexLet, LexIf, LexElse, LexCases, LexOtherwise,
 	  LexAnd, LexOr, LexXor, LexTrue, LexFalse,
 	};
 

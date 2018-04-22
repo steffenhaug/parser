@@ -17,7 +17,8 @@ int main() {
   
   ringbuffer b;
   init_stringbuffer(&b,
-		    "A[steffen.first_name + 3].\n");
+		    "A[steffen.first_name + 3].\n"
+		    "str->int(\"123\").\n");
 
   int error_code = 0;
 

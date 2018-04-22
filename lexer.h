@@ -38,6 +38,7 @@
 #define EOF_IN_COMMENT 303
 #define EOF_IN_STRING 304
 #define UNRECOGNISED_ESCAPE_SEQ 305
+#define FAILED_MALLOC_CONTENT 306
 
 /* Equivalence Classes
  * -------------------
@@ -241,7 +242,6 @@
   X(LexUse, "use")							\
   X(LexAs, "as")							\
   X(LexLet, "let")							\
-  X(LexWhere, "where")							\
   X(LexIf, "if")							\
   X(LexElse, "else")							\
   X(LexCases, "cases")							\
@@ -262,10 +262,8 @@ typedef struct {
   size_t column;
 } lexeme;
 
-/* managing lexemes */
-
 int init_lexeme(lexeme *l, lexeme_class cls, const char* content,
-		int line, int column);
+		size_t line, size_t column);
 
 int free_lexeme(lexeme *l);
 
