@@ -18,7 +18,7 @@ https://mort.coffee/home/obscure-c-features/
 #include <stdlib.h>
 #include <string.h>
 
-#define ERROR_MSG_MAX_LEN 256
+#define ERROR_MSG_MAX_LEN 512
 
 /* ANSI escape codes for colours */
 #define RED   "\x1B[31m"

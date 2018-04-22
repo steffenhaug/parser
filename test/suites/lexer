@@ -11,12 +11,15 @@ suite(lexer, {
     });
 
     unit("line/column tracking", {
-	ringbuffer b;
-	init_stringbuffer(&b,
-			  "a b c \n"
-			  "d e f \n"
-			  "g h i \n");
+	int error_code;
 	lexeme l;
+	ringbuffer b;
+
+	error_code = init_stringbuffer(&b,
+				       "a b c \n"
+				       "d e f \n"
+				       "g h i \n");
+	assert(!error_code);
 
 	const char* expected_values[] = {
 	  "a", "b", "c", "d", "e", "f", "g", "h", "i"
@@ -45,9 +48,10 @@ suite(lexer, {
 
     unit("lex numbers", {
         ringbuffer b;
-	init_stringbuffer(&b,
-			  "0 123 0b101 0xFFA "
-			  "0.01 1.23 1.2e4 12e-5 ");
+	int error_code = init_stringbuffer(&b,
+					   "0 123 0b101 0xFFA "
+					   "0.01 1.23 1.2e4 12e-5 ");
+	assert(!error_code);
 	lexeme l;
 
 	// Integer Lexemes
@@ -97,15 +101,16 @@ suite(lexer, {
 
     unit("lex operators and special symbols", {
     	ringbuffer b;
-	init_stringbuffer(&b,
-			  "+ - * / ^      \n"
-			  ". ... = == !=  \n"
-			  "< > <= >= :    \n"
-			  "; , -> <- mod  \n"
-			  ".\n            \n");
-
 	int error_code = 0;
 	lexeme l;
+	
+	error_code = init_stringbuffer(&b,
+				       "+ - * / ^      \n"
+				       ". ... = == !=  \n"
+				       "< > <= >= :    \n"
+				       "; , -> <- mod  \n"
+				       ".\n            \n");
+	assert(!error_code);
 
 	int number_of_lexemes = 21;
 	lexeme_class expected_types[] = {
@@ -134,10 +139,11 @@ suite(lexer, {
 
     unit("lex brackets", {
 	ringbuffer b;
-	init_stringbuffer(&b, "() [] {} <>");
-	
 	int error_code = 0;
 	lexeme l;
+
+	error_code = init_stringbuffer(&b, "() [] {} <>");
+	assert(!error_code);
 
 	int number_of_lexemes = 8;
 	lexeme_class expected_types[] = {
@@ -169,7 +175,10 @@ suite(lexer, {
 
     unit("lexer skips comments", {
 	ringbuffer b;
-	init_stringbuffer(&b,
+	int error_code = 0;
+	lexeme l;
+
+	error_code = init_stringbuffer(&b,
 			  "->" // !
 			  "// foobar loodar. \n"
 			  "// Comments should be invisible \n"
@@ -178,10 +187,10 @@ suite(lexer, {
 			  "// emit two RightArrows (->) for \n"
 			  "// this segment of text \n"
 			  "->"); // !
+	assert(!error_code);
 
-	int error_code = 0;
+
 	int number_of_lexemes = 2;
-	lexeme l;
 
 	for (int i = 0; i < number_of_lexemes; i++) {
 	  error_code = scan(&b, &l);
@@ -201,10 +210,13 @@ suite(lexer, {
 
     unit("lex strings", {
 	ringbuffer b;
-	init_stringbuffer(&b, " \"hello, world!\" ");
-
 	lexeme l;
-	int error_code = scan(&b, &l);
+	int error_code = 0;
+
+	error_code = init_stringbuffer(&b, " \"hello, world!\" ");
+	assert(!error_code);
+
+	error_code = scan(&b, &l);
 	assert(!error_code);
 	assert(l.type == LexString);
 	assert(strcmp(l.content, "hello, world!") == 0);
@@ -215,15 +227,16 @@ suite(lexer, {
 
     unit("lex identifiers", {
 	ringbuffer b;
-	init_stringbuffer(&b, "x norm even? _vX2");
-
 	lexeme l;
 	int error_code = 0;
 
-	int number_of_lexemes = 4;
+	error_code = init_stringbuffer(&b, "x norm even? _vX2 str->int");
+	assert(!error_code);
+
+	int number_of_lexemes = 5;
 
 	const char *expected_content[] = {
-	  "x", "norm", "even?", "_vX2",
+	  "x", "norm", "even?", "_vX2", "str->int",
 	};
 
 	for (int i = 0; i < number_of_lexemes; i++) {
@@ -244,18 +257,21 @@ suite(lexer, {
     
     unit("lex reserved keywords", {
 	ringbuffer b;
-	init_stringbuffer(&b,
+	int error_code = 0;
+	lexeme l;
+
+	error_code = init_stringbuffer(&b,
 			  "mod func fn use as "
-			  "let where if else cases otherwise "
+			  "let if else cases otherwise "
 			  "and or xor true false ");
 
-	int error_code = 0;
-	int number_of_lexemes = 16;
-	lexeme l;
+	assert(!error_code);
+	
+	int number_of_lexemes = 15;
 
 	lexeme_class expected_types[] = {
 	  LexMod, LexFunc, LexFn, LexUse, LexAs,
-	  LexLet, LexWhere, LexIf, LexElse, LexCases, LexOtherwise,
+	  LexLet, LexIf, LexElse, LexCases, LexOtherwise,
 	  LexAnd, LexOr, LexXor, LexTrue, LexFalse,
 	};
 

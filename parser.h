@@ -7,22 +7,15 @@
 #include "lexer.h"
 #include "ast.h"
 
-#define MAX_LOOKAHEAD 8
+#define MAX_LOOKAHEAD 16
 
-/* Error handling
- * ==============
- * Defines error codes, and a macro for throwing errors.
+/* Error codes
+ * ===========
  */
-
 #define MATCH_FAILED 20
 #define MATCH_STORE_NO_VALUE 21
 #define EXPECTED_ATOM 30
 #define FAILED_MALLOC 40
-
-#define parser_error(message, ...)			     \
-  fprintf(stderr,					     \
-	  "Parser Error: " message "\n", ##__VA_ARGS__);
-
 
 typedef struct {
   ringbuffer *input;
@@ -52,23 +45,33 @@ int parse_expression(parser *p, ast *expr);
 
 int init_parser(parser *p, ringbuffer *b);
 int free_parser(parser *p);
-int advance(parser *p);
 
-/* Lookahead functions
- * -------------------
- * LA: ([L]ook[A]head)
- *   Returs a pointer to the lexeme i steps
- *   in front of the current lexeme.
- * LT: ([L]ookahead [T]ype)
- *   Returns the lexeme_class of the lexeme
- *   i steps in front of the current lexeme.
- * 
- * Note:
- * LA(p, 0) and LT(p, 0) gives the current
- * lexeme.
+/*
+ * Lookahead
+ * =========
  */
 lexeme *LA(parser *p, size_t i);
-lexeme_class LT(parser *p, size_t i);
+/* LA: ([L]ook[A]head)
+ * Returs a pointer to the lexeme i steps
+ * in front of the current lexeme.
+ */
 
+lexeme_class LT(parser *p, size_t i);
+/* LT: ([L]ookahead [T]ype)
+ * Returns the lexeme_class of the lexeme
+ * i steps in front of the current lexeme.
+ */
+
+/*
+ * Consuming Lexemes
+ * =================
+ */
 int match(parser *p, lexeme_class cls);
+/* Advances the parser one lexeme, returning an error
+ * code if the lexeme does not correspond to the one provided.
+ */
+
 int match_store_value(parser *p, lexeme_class cls, ast *node);
+/* Matches the provided lexeme (see 'match'), and stores the literal
+ * value of the lexeme in the ast-node provided.
+ */

@@ -41,6 +41,7 @@ typedef enum {
   /*  */
   ASTCall,
   ASTSubscript,
+  ASTMember,
 } ast_class;
 
 typedef struct {

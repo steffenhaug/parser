@@ -26,7 +26,7 @@
 #include "ringbuffer.h"
 
 
-// THe maximum stack depth is  also the max length of
+// The maximum stack depth is  also the max length of
 // strings, identifiers and so on.
 #define LEXEME_STACK_DEPTH 512
 
@@ -38,6 +38,7 @@
 #define EOF_IN_COMMENT 303
 #define EOF_IN_STRING 304
 #define UNRECOGNISED_ESCAPE_SEQ 305
+#define FAILED_MALLOC_CONTENT 306
 
 /* Equivalence Classes
  * -------------------
@@ -214,7 +215,7 @@
   X(LexGreaterThan, ">")						\
   X(LexLessOrEq, "<=")							\
   X(LexGreaterOrEq, ">=")						\
-    X(LexEquals, "=")							\
+  X(LexEquals, "=")							\
   X(LexDoubleEquals, "==")						\
   X(LexNotEqual, "!=")							\
   X(LexLeftArrow, "<-")							\
@@ -241,14 +242,13 @@
   X(LexUse, "use")							\
   X(LexAs, "as")							\
   X(LexLet, "let")							\
-  X(LexWhere, "where")							\
   X(LexIf, "if")							\
   X(LexElse, "else")							\
   X(LexCases, "cases")							\
   X(LexOtherwise, "otherwise")						\
   X(LexEndOfFile, "<eof>")						\
   X(LexStatementTerminator, "<.>")
-  
+
 typedef enum {
 #define X(lexeme_name, lexeme_repr) lexeme_name,
   LIST_OF_LEXEMES
@@ -262,10 +262,8 @@ typedef struct {
   size_t column;
 } lexeme;
 
-/* managing lexemes */
-
 int init_lexeme(lexeme *l, lexeme_class cls, const char* content,
-		int line, int column);
+		size_t line, size_t column);
 
 int free_lexeme(lexeme *l);
 

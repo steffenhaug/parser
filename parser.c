@@ -4,6 +4,10 @@
 
 #include "parser.h"
 
+#define parser_error(message, ...)			     \
+  fprintf(stderr,					     \
+	  "Parser Error: " message "\n", ##__VA_ARGS__);
+
 /*
  * Recursive Descent Functions
  * ===========================
@@ -11,15 +15,19 @@
 
 int parse_root(parser *p, ast *root) {
   int error_code = 0;
+  int start_line = LA(p, 0)->line;
+  int start_column = LA(p, 0)->column;
+
   init_ast(root, ASTRoot);
 
-  set_span_start(root, LA(p, 0)->line, LA(p, 0)->column);
   while (LT(p, 0) != LexEndOfFile && !error_code) {
     ast stmt;
     error_code = parse_statement(p, &stmt);
 
     push_child(root, stmt);
   }
+
+  set_span_start(root, start_line, start_column);
   set_span_end(root, LA(p, 0)->line, LA(p, 0)->column);
   return error_code;
 }
@@ -31,9 +39,10 @@ int parse_statement(parser *p, ast *stmt) {
   
   // assume, for now, the statement is a simple expression
   parse_expression(p, stmt);
+  match(p, LexStatementTerminator);
+
   set_span_start(stmt, start_line, start_column);
   set_span_end(stmt, LA(p, 0)->line, LA(p, 0)->column);
-  match(p, LexStatementTerminator);
   return error_code;
 }
 
@@ -46,6 +55,7 @@ int parse_identifier_list(parser *p, ast *node) {
   // We don't initialize the node here, because we don't
   // want to reset it! So don't pass an unitiialized node.
   int error_code = 0;
+
   ast tmp;
   while (!error_code) {
     init_ast(&tmp, ASTIdentifier);
@@ -57,14 +67,18 @@ int parse_identifier_list(parser *p, ast *node) {
     if (is_closing_bracket(LT(p, 0)))
       break;
   }
+
   return error_code;
 }
 
 int parse_expression_list(parser *p, ast *node) {
   int error_code = 0;
+  int start_line = LA(p, 0)->line;
+  int start_column = LA(p, 0)->column;
+
   ast tmp;
   while (!error_code) {
-    parse_expression(p, &tmp);
+    error_code = parse_expression(p, &tmp);
     push_child(node, tmp);
     if (LT(p, 0) != LexComma)
       break;
@@ -72,6 +86,7 @@ int parse_expression_list(parser *p, ast *node) {
     if (is_closing_bracket(LT(p, 0)))
       break;
   }
+
   return error_code;
 }
 
@@ -127,8 +142,7 @@ int parse_atom(parser *p, ast *atom) {
     error_code = match_store_value(p, LexString, atom);
     break;
   default:
-    parser_error("Expected atomic value, found %s. "
-		 "(line: %zu, column: %zu)",
+    parser_error("Expected atomic value, found %s. (line: %zu, column: %zu)",
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);
@@ -141,9 +155,10 @@ int parse_primary_expression(parser *p, ast *expr) {
   int error_code = 0;
   ast tmp;
   error_code = parse_atom(p, &tmp);
-  // Parse "trailing bit" ([...] or (...)) if there is one
+  // Parse "trailing bit":
   switch (LT(p, 0)) {
   case LexLeftParenthesis:
+    // parse argument vector
     match(p, LexLeftParenthesis);
     init_ast(expr, ASTCall);
     push_child(expr, tmp);
@@ -151,11 +166,22 @@ int parse_primary_expression(parser *p, ast *expr) {
     match(p, LexRightParenthesis);
     break;
   case LexLeftSquareBracket:
+    // parse subscript
     match(p, LexLeftSquareBracket);
     init_ast(expr, ASTSubscript);
     push_child(expr, tmp);
     parse_expression_list(p, expr);
     match(p, LexRightSquareBracket);
+    break;
+  case LexDot:
+    // parse member indexing
+    match(p, LexDot);
+    init_ast(expr, ASTMember);
+    push_child(expr, tmp);
+    ast id;
+    init_ast(&id, ASTIdentifier);
+    match_store_value(p, LexIdentifier, &id);
+    push_child(expr, id);
     break;
   default:
     *expr = tmp;
@@ -373,9 +399,6 @@ int parse_and_expr(parser *p, ast *expr) {
 }
 
 int parse_or_expr(parser *p, ast *expr) {
-  // Or expressions are the "starting point" for
-  // every single operatpr expression, because they
-  // have the lowest prescedence.
   int error_code = 0;
 
   ast left, right, tmp;
@@ -408,17 +431,10 @@ int parse_or_expr(parser *p, ast *expr) {
 
 int parse_expression(parser *p, ast *expr) {
   int error_code = 0;
-
+  // assume it is an arithmetic expression
   error_code = parse_or_expr(p, expr);
   return error_code;
 }
-
-/*
- * Parser Management
- * =================
- * advance, match, LA and LT are used to "encode the
- * grammar" in a recursive descent parser.
- */
 
 int advance(parser *p) {
   // Free the previous lexeme
@@ -516,8 +532,7 @@ int match_store_value(parser *p, lexeme_class cls, ast *node) {
     break;
   }
   default:
-    parser_error("Expected lexeme with value. Found %s. "
-		 "(line: %zu, column: %zu)",
+    parser_error("Expected lexeme with value. Found %s. (line: %zu, column: %zu)",
 		 lexeme_class_tostr(LT(p, 0)),
 		 LA(p, 0)->line,
 		 LA(p, 0)->column);

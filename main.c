@@ -17,18 +17,8 @@ int main() {
   
   ringbuffer b;
   init_stringbuffer(&b,
-		    "1 + 3 * (5 - 6).\n"
-		    "r mod n.\n"
-		    "--6.\n"
-		    "1 + -x / 6^-y.\n"
-		    "- 567.\n"
-		    "true and not false xor true.\n"
-		    "x < y.\n"
-		    "x < y < z < w.\n"
-		    "x < y < z and not w.\n"
-		    "f(x, y).\n"
-		    "A[i, j].\n"
-		    "g(H[i, j], x mod n).\n");
+		    "A[steffen.first_name + 3].\n"
+		    "str->int(\"123\").\n");
 
   int error_code = 0;
 

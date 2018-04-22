@@ -131,6 +131,7 @@ To-do list
 [x] Modularize the unit-testing library
 [ ] Fix the ringbuffer, so that it guarantees the right amount
     of lookahead, even though we don't need it.
+[ ] spans of tree nodes
 
 Sources
 -------

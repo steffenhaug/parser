@@ -12,7 +12,7 @@
  *  b) make memcheck
  * to run the test through valgrind, which is preffered.
  * 
- * 
+ * also, compile with -DLIE_DEBUG
  */
 
 #include "../ringbuffer.h"
@@ -26,6 +26,11 @@
 #include "suites/ast"
 
 int main() {
+  printf("\n"
+	 "\n"
+	 "Parser Test\n"
+	 "===========\n"
+	 );
   test(ringbuffer);
   test(lexer);
   test(ast);
