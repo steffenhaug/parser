@@ -4,18 +4,11 @@
 
 #include "stdbool.h"
 #include "ringbuffer.h"
+#include "error.h"
 #include "lexer.h"
 #include "ast.h"
 
 #define MAX_LOOKAHEAD 16
-
-/* Error codes
- * ===========
- */
-#define MATCH_FAILED 20
-#define MATCH_STORE_NO_VALUE 21
-#define EXPECTED_ATOM 30
-#define FAILED_MALLOC 40
 
 typedef struct {
   ringbuffer *input;

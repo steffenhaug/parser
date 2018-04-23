@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "error.h"
+
 /* ringbuffer
  * ==========
  * Implements a ringbuffer to read files with lookahead
@@ -25,13 +27,6 @@
 #endif // LIE_DEBUG
 
 #define BUFFER_SIZE (3 * BATCH_SIZE)
-
-/* Error Codes */
-#define STRING_LONGER_THAN_BUFFER 201
-#define COULD_NOT_OPEN_FILE 202
-#define ADVANCE_FREE_BUFFER 203
-#define SOURCE_EXHAUSTED 204
-#define INVALID_BUFFER_TYPE 205
 
 typedef enum {
   StringBuffer,

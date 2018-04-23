@@ -16,7 +16,7 @@ void init_ast(ast *node, ast_class cls) {
 
 int free_ast(ast *node) {
   int error_code = free_ast_vector(&node->children);
-  if (is_string_type(node->type))
+  if (has_malloced_value(node->type))
     free(node->value.s);
   return error_code;
 }
@@ -61,21 +61,20 @@ void init_ast_vector(ast_vector *nodes) {
 }
 
 int free_ast_vector(ast_vector *nodes) {
-  if (nodes != NULL) {
-    // free the nodes in the array individually...
-    for (int i = 0 ; i < nodes->length; i++)
-      free_ast(&nodes->data[i]);
+  if (NULL == nodes)
+    return warning(FREE_NULL);
+      
+  // free the nodes in the array individually...
+  for (int i = 0 ; i < nodes->length; i++)
+    free_ast(&nodes->data[i]);
 
-    // then free the underlying array...
-    free(nodes->data);
+  // then free the underlying array...
+  free(nodes->data);
 
-    // and zero all the members
-    init_ast_vector(nodes);
+  // and zero all the members
+  init_ast_vector(nodes);
 
-    return 0;
-  } else {
-    return 1;
-  }
+  return ok;
 }
 
 int grow_ast_vector(ast_vector *nodes) {
@@ -87,26 +86,30 @@ int grow_ast_vector(ast_vector *nodes) {
   ast* new_alloc = (ast*) realloc(nodes->data,
 				  new_capacity * sizeof(*new_alloc));
 
-  if (new_alloc != NULL) {
-    nodes->capacity = new_capacity;
-    nodes->data = new_alloc;
-    return 0;
-  } else {
-    return 1;
-  }
+  if (NULL == new_alloc)
+    goto failed_malloc;
+
+  nodes->capacity = new_capacity;
+  nodes->data = new_alloc;
+  return ok;
+
+ failed_malloc:
+  return error(FAILED_MALLOC);
 }
 
 int fit_ast_vector(ast_vector *nodes) {
   ast* new_alloc = (ast*) realloc(nodes->data,
 				  nodes->length * sizeof(*new_alloc));
 
-  if (new_alloc != NULL) {
-    nodes->capacity = nodes->length;
-    nodes->data = new_alloc;
-    return 0;
-  } else {
-    return 1;
-  }
+  if (NULL == new_alloc)
+    goto failed_malloc;
+  
+  nodes->capacity = nodes->length;
+  nodes->data = new_alloc;
+  return ok;
+
+ failed_malloc:
+  return error(FAILED_MALLOC);
 }
 
 
@@ -114,9 +117,9 @@ int fit_ast_vector(ast_vector *nodes) {
  * Printing
  * ======== */
 
-#define becomes(sym, str) case sym: return str; break;
 char *ast_class_tostr(ast_class cls) {
   switch (cls) {
+#define becomes(sym, str) case sym: return str; break;
     becomes(ASTPlus, "+");
     becomes(ASTMinus, "-");
     becomes(ASTUnaryMinus, "-");
@@ -124,21 +127,19 @@ char *ast_class_tostr(ast_class cls) {
     becomes(ASTDiv, "/");
     becomes(ASTPow, "^");
     becomes(ASTMod, "mod");
-
     becomes(ASTAnd, "and");
     becomes(ASTXor, "xor");
     becomes(ASTOr, "or");
     becomes(ASTNot, "not");
     becomes(ASTComp, "cmp");
-
     becomes(ASTCall, "call");
     becomes(ASTSubscript, "subscript");
     becomes(ASTMember, "member");
+#undef becomes
   default:
     return "<cannot represent>";
   }
 }
-#undef becomes
 
 void print_sexpr(ast *tree) {
   switch (tree->type) {
@@ -151,10 +152,7 @@ void print_sexpr(ast *tree) {
 	     tree->children.data[i].span.start_column,
 	     tree->children.data[i].span.end_line,
 	     tree->children.data[i].span.end_column);
-      printf("\n");
-
     }
-    printf("\n");
     break;
     /* Atoms */
   case ASTBool:
@@ -208,8 +206,6 @@ void print_sexpr(ast *tree) {
   }
 }
 
-bool is_string_type(ast_class cls) {
-  return
-    cls == ASTString ||
-    cls == ASTIdentifier;
+bool has_malloced_value(ast_class cls) {
+  return cls == ASTString || cls == ASTIdentifier;
 }

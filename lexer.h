@@ -23,22 +23,14 @@
 #pragma once
 
 #include <stdbool.h>
+
+#include "error.h"
 #include "ringbuffer.h"
 
 
 // The maximum stack depth is  also the max length of
 // strings, identifiers and so on.
 #define LEXEME_STACK_DEPTH 512
-
-/*
- * Error Codes
- */
-#define FREE_NULL_LEXEME 301
-#define UNEXPECTED_SYMBOL 302
-#define EOF_IN_COMMENT 303
-#define EOF_IN_STRING 304
-#define UNRECOGNISED_ESCAPE_SEQ 305
-#define FAILED_MALLOC_CONTENT 306
 
 /* Equivalence Classes
  * -------------------

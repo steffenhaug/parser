@@ -29,10 +29,6 @@ int main() {
   parse_root(&p, &tree);
 
   print_sexpr(&tree);
-  
-
-
-  
 
   free_ast(&tree);
   free_parser(&p);

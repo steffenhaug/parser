@@ -9,7 +9,7 @@
 // for errors in the lexer state machine.
 #define lexeme_error(message, ...)			       \
   fprintf(stderr,					       \
-	  "Lexeme Error: " message "\n", \
+	  "Lexeme Error: " message "\n",		       \
 	  ##__VA_ARGS__);	       
 
 int init_lexeme(lexeme *l, lexeme_class cls, const char *content,
@@ -28,28 +28,24 @@ int init_lexeme(lexeme *l, lexeme_class cls, const char *content,
     strcpy(l->content, content);
   }
 
-  return 0;
+  return ok;
 
  failed_malloc:
   lexeme_error("Failed to allocate memory for content! (content = %s on line %zu, col %zu)",
 	       content, line, column);
-  return FAILED_MALLOC_CONTENT;
+  return error(FAILED_MALLOC_CONTENT);
 }
 
 int free_lexeme(lexeme *l) {
   if (l == NULL)
-    goto tried_free_null;
+    return warning(FREE_NULL);
 
   free(l->content);
   l->line = 0;
   l->column = 0;
   l->content = NULL;
 
-  return 0;
-
- tried_free_null:
-  lexeme_error("Tried to free NULL.");
-  return FREE_NULL_LEXEME;
+  return ok;
 }
 
 lexeme_class id_or_keyword(const char *contents) {
@@ -98,13 +94,13 @@ int scan(ringbuffer *input, lexeme *l) {
 
 #define yield(category)						\
   init_lexeme(l, category, NULL, input->line, munch_start);	\
-  return 0
+  return ok
 // Initializes the lexeme just scanned.
 
 #define yield_value(category)					\
   munched[stackp + 1] = '\0';					\
   init_lexeme(l, category, munched, input->line, munch_start);	\
-  return 0
+  return ok
 // Initializes the lexeme just scanned, and *copies* 'munched' to its content.
 
   char munched[LEXEME_STACK_DEPTH];
@@ -186,7 +182,7 @@ int scan(ringbuffer *input, lexeme *l) {
     goto seen_slash;
   default:
     lexer_error("Unexpected symbol \"%c\".", last_munched);
-    return UNEXPECTED_SYMBOL;
+    return error(UNEXPECTED_SYMBOL);
   }
 
  seen_dot:
@@ -208,7 +204,7 @@ int scan(ringbuffer *input, lexeme *l) {
     yield(LexEllipsis);
   default:
     lexer_error("Unexpected symbol \"%c\".", last_munched);
-    return UNEXPECTED_SYMBOL;
+    return error(UNEXPECTED_SYMBOL);
   }
 
  seen_minus:
@@ -238,7 +234,7 @@ int scan(ringbuffer *input, lexeme *l) {
 		"(It is impossible to create commented lines"
 		" without newlines in most text-editors, so"
 		" most likely something else is seriously wrong.)");
-    return EOF_IN_COMMENT;
+    return error(EOF_IN_COMMENT);
   default:
     goto skip_comment;
   }
@@ -271,7 +267,7 @@ int scan(ringbuffer *input, lexeme *l) {
     yield(LexNotEqual);
   default:
     lexer_error("Expected \"=\" after \"!\". Found \"%c\".", last_munched);
-    return UNEXPECTED_SYMBOL;
+    return error(UNEXPECTED_SYMBOL);
   }
 
  seen_equals:
@@ -353,11 +349,11 @@ int scan(ringbuffer *input, lexeme *l) {
       goto scan_exp;
     default:
       lexer_error("No digit after \"-\" in exponent! Found \"%c\".", last_munched);
-      return UNEXPECTED_SYMBOL;
+      return error(UNEXPECTED_SYMBOL);
     }
   default:
     lexer_error("No exponent after \"e\". Found \"%c\".", last_munched);
-    return UNEXPECTED_SYMBOL;
+    return error(UNEXPECTED_SYMBOL);
   }
 
  scan_exp:
@@ -376,7 +372,7 @@ int scan(ringbuffer *input, lexeme *l) {
     goto scan_hex;
   default:
     lexer_error("No hex value after \"0x\". Found \"%c\".", last_munched);
-    return UNEXPECTED_SYMBOL;
+    return error(UNEXPECTED_SYMBOL);
   }
 
  scan_hex:
@@ -396,7 +392,7 @@ int scan(ringbuffer *input, lexeme *l) {
     goto scan_bin;
   default:
     lexer_error("No binary value after \"0b\". Found \"%c\".", last_munched);
-    return UNEXPECTED_SYMBOL;
+    return error(UNEXPECTED_SYMBOL);
   }
 
  scan_bin:
@@ -424,7 +420,7 @@ int scan(ringbuffer *input, lexeme *l) {
     goto scan_escaped_character;
   case EOF:
     lexer_error("Unexpected EOF while lexing string!");
-    return EOF_IN_STRING;
+    return error(EOF_IN_STRING);
   default:
     goto scan_string;
   }
@@ -444,7 +440,7 @@ int scan(ringbuffer *input, lexeme *l) {
     goto scan_string;
   default:
     lexer_error("Unrecognized escape character \"%c\".", last_munched);
-    return UNRECOGNISED_ESCAPE_SEQ;
+    return error(UNRECOGNISED_ESCAPE_SEQ);
   }
 
 

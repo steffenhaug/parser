@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include "error.h"
 
 #define AST_VECTOR_GROWTH_FACTOR 2
 #define AST_VECTOR_MIN_CAPACITY 2
@@ -38,7 +39,7 @@ typedef enum {
   ASTXor,
   ASTOr,
   ASTNot,
-  /*  */
+  /* Trailers */
   ASTCall,
   ASTSubscript,
   ASTMember,
@@ -91,7 +92,7 @@ ast *child_at(ast *parent, size_t i);
 void set_span_start(ast *root, int line, int column);
 void set_span_end(ast *root, int line, int column);
 
-bool is_string_type(ast_class cls);
+bool has_malloced_value(ast_class cls);
 
 /*
  * ast_vector management

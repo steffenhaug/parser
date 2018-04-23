@@ -33,12 +33,9 @@ size_t read_limit(ringbuffer *b) {
   case StringBuffer:
     return b->buffer_limit;
   default:
-    goto invalid_buffer_type;
+    ringbuffer_error("Invalid buffer type! You probably forgot to initialize it. (type: %d)", b->type);
+    return 0;
   }
-
- invalid_buffer_type:
-  ringbuffer_error("Invalid buffer type! You probably forgot to initialize it. (type: %d)", b->type);
-  return 0;
 }
 
 int init_filebuffer(ringbuffer *b, const char *filename) {
@@ -71,12 +68,12 @@ int init_filebuffer(ringbuffer *b, const char *filename) {
   b->line = 1;
   b->column = 0;
 
-  return 0;
+  return ok;
 
  failed_open:
   ringbuffer_error("Failed to open file! (%s)", filename);
   free_ringbuffer(b);
-  return COULD_NOT_OPEN_FILE;
+  return error(COULD_NOT_OPEN_FILE);
 }
 
 int init_stringbuffer(ringbuffer *b, const char *str) {
@@ -99,7 +96,7 @@ int init_stringbuffer(ringbuffer *b, const char *str) {
 
   b->line = 1;
   b->column = 0;
-  return 0;
+  return ok;
 }
 
 int free_ringbuffer(ringbuffer *b) {
@@ -115,7 +112,7 @@ int free_ringbuffer(ringbuffer *b) {
   b->buffer_limit = 0;
   b->line = 0;
   b->column = 0;
-  return 0;
+  return ok;
 }
 
 
@@ -137,7 +134,7 @@ int advance_filebuffer(ringbuffer *b, char *c) {
   }
 
   b->position = mod(b->position + 1, BUFFER_SIZE);
-  return 0;
+  return ok;
 }
 
 int advance_stringbuffer(ringbuffer *b, char *c) {
@@ -148,7 +145,7 @@ int advance_stringbuffer(ringbuffer *b, char *c) {
     exhaust(b);
 
   b->position++;
-  return 0;
+  return ok;
 }
 
 int get_character(ringbuffer *b, char *c) {
@@ -174,13 +171,13 @@ int get_character(ringbuffer *b, char *c) {
  exhausted:
   *c = EOF;
   b->at_cursor = EOF;
-  return SOURCE_EXHAUSTED;
+  return warning(SOURCE_EXHAUSTED);
 
  invalid_buffer_type:
   *c = (char) NULL;
   b->at_cursor = (char) NULL;
   ringbuffer_error("Invalid buffer type! You probably forgot to initialize it. (type: %d)", b->type);
-  return INVALID_BUFFER_TYPE;
+  return error(INVALID_BUFFER_TYPE);
 }
 
 char look_ahead(ringbuffer *b, size_t i) {

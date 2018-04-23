@@ -430,22 +430,29 @@ int parse_or_expr(parser *p, ast *expr) {
 
 
 int parse_expression(parser *p, ast *expr) {
-  int error_code = 0;
+  int error_code = ok;
   // assume it is an arithmetic expression
   error_code = parse_or_expr(p, expr);
   return error_code;
 }
 
 int advance(parser *p) {
+  int error_code = ok;
+
   // Free the previous lexeme
   free_lexeme(&p->lookahead[p->position]);
 
   // Get a new one in its place
-  scan(p->input, &p->lookahead[p->position]);
+  error_code = scan(p->input, &p->lookahead[p->position]);
+  // We probably need to handle this.
+  // If the scan yields an error, the lexeme will ne NULL (we just freed it),
+  // and I would rather not do null checks inside the parser -- the murual
+  // recursion is ugly enough as it is; we don't need to stray further from
+  // the Backus-Naur form.
 
   // Advance the position, potentially wrapping around
   p->position = (p->position + 1) % MAX_LOOKAHEAD;
-  return 0;
+  return error_code;
 }
 
 int init_parser(parser *p, ringbuffer *b) {
@@ -457,15 +464,15 @@ int init_parser(parser *p, ringbuffer *b) {
     scan(p->input, &p->lookahead[i]);
   }
 
-  return 0;
+  return ok;
 }
 
 int free_parser(parser *p) {
   if (NULL == p)
-    return 1;
+    return warning(FREE_NULL);
   for (int i = 0; i < MAX_LOOKAHEAD; i++)
     free_lexeme(&p->lookahead[i]);
-  return 0;
+  return ok;
 }
 
 lexeme *LA(parser *p, size_t i) {
@@ -477,32 +484,25 @@ lexeme_class LT(parser *p, size_t i) {
 }
 
 int match(parser *p, lexeme_class cls) {
-  // Assert that the current lexeme has the right type
-  int error_code = 0;
-  if (LT(p, 0) != cls) {
-    parser_error("Failed to match %s, found %s. (line: %zu, column: %zu)",
-		 lexeme_class_tostr(cls),
-		 lexeme_class_tostr(LT(p, 0)),
-		 LA(p, 0)->line,
-		 LA(p, 0)->column);
-    error_code = MATCH_FAILED;
-  }
+  if (LT(p, 0) != cls)
+    goto failed_match;
 
   advance(p);
-  return error_code;
+  return ok;
+
+ failed_match:
+  advance(p);
+  parser_error("Failed to match %s, found %s. (line: %zu, column: %zu)",
+	       lexeme_class_tostr(cls),
+	       lexeme_class_tostr(LT(p, 0)),
+	       LA(p, 0)->line,
+	       LA(p, 0)->column);
+  return error(MATCH_FAILED);
 }
 
 int match_store_value(parser *p, lexeme_class cls, ast *node) {
-  int error_code = 0;
-
-  if (LT(p, 0) != cls) {
-    parser_error("Failed to match %s, found %s. (line: %zu, column: %zu)",
-		 lexeme_class_tostr(cls),
-		 lexeme_class_tostr(LT(p, 0)),
-		 LA(p, 0)->line,
-		 LA(p, 0)->column);
-    error_code = MATCH_FAILED;
-  }
+  if (LT(p, 0) != cls)
+    goto failed_match;
 
   switch (cls) {
   case LexDecInteger:
@@ -526,19 +526,34 @@ int match_store_value(parser *p, lexeme_class cls, ast *node) {
     node->value.b = false;
     break;
   case LexString:
-  case LexIdentifier: {
+  case LexIdentifier:
+    // We "swap" the char pointers instead of mallocing a new string.
+    // This leaves the lexeme with NULL as content, but this is okay
+    // because it is immediately freed as we call advance.
     node->value.s = LA(p, 0)->content;
     LA(p, 0)->content = NULL;
     break;
-  }
   default:
-    parser_error("Expected lexeme with value. Found %s. (line: %zu, column: %zu)",
-		 lexeme_class_tostr(LT(p, 0)),
-		 LA(p, 0)->line,
-		 LA(p, 0)->column);
-    return MATCH_STORE_NO_VALUE;
+    goto matched_lexeme_has_no_value;
   }
 
   advance(p);
-  return error_code;
+  return ok;
+
+ failed_match:
+  advance(p);
+  parser_error("Failed to match %s, found %s. (line: %zu, column: %zu)",
+	       lexeme_class_tostr(cls),
+	       lexeme_class_tostr(LT(p, 0)),
+	       LA(p, 0)->line,
+	       LA(p, 0)->column);
+  return error(MATCH_FAILED);
+
+ matched_lexeme_has_no_value:
+  advance(p);
+  parser_error("Expected lexeme with value. Found %s. (line: %zu, column: %zu)",
+	       lexeme_class_tostr(LT(p, 0)),
+	       LA(p, 0)->line,
+	       LA(p, 0)->column);
+  return error(MATCH_STORE_NO_VALUE);
 }
